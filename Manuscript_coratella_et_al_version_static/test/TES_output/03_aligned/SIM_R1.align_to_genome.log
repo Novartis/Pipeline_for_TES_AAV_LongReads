@@ -1,0 +1,8 @@
+[M::main::0.007*1.07] loaded/built the index for 2 target sequence(s)
+[M::mm_mapopt_update::0.009*1.06] mid_occ = 50
+[M::mm_idx_stat] kmer size: 19; skip: 19; is_hpc: 0; #seq: 2
+[M::mm_idx_stat::0.010*1.05] distinct minimizers: 86766 (97.21% are singletons); average occurrences: 1.093; average spacing: 9.925; total length: 940941
+[M::worker_pipeline::0.067*2.26] mapped 54 sequences
+[M::main] Version: 2.30-r1287
+[M::main] CMD: minimap2 -t 4 -a -x map-hifi --cs test_genome_k19_w19.mmi /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/02_filtered/SIM_R1.filtered.fastq.gz
+[M::main] Real time: 0.069 sec; CPU: 0.153 sec; Peak RSS: 0.061 GB

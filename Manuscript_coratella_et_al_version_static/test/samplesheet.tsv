@@ -1,0 +1,3 @@
+sample_name	fastq_path	plasmid_seq	adapter5	adapter3
+SIM_R1	simulated_data/rep1_simulated_reads.fastq.gz	pAAV-CMV-EGFP-WPRE.fa	TACACCCAATATTCGACACT	GTCACTATCTTCAGCATCTC
+SIM_R2	simulated_data/rep2_simulated_reads.fastq.gz	pAAV-CMV-EGFP-WPRE.fa	TACACCCAATATTCGACACT	GTCACTATCTTCAGCATCTC

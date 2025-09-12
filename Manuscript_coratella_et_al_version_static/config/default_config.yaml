@@ -1,0 +1,50 @@
+# Configuration file for default configurations.
+# These will be overwritten by a run specific config file
+# if specified using the "--configfile" flag.
+
+
+# Reference genome. See Heng Li's blog on which to use:
+# https://lh3.github.io/2017/11/13/which-human-reference-genome-to-use
+ref_genome: "~/genomes/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
+
+# Pre-built minimap2 index (https://lh3.github.io/minimap2/minimap2.html):
+# minimap2 -x map-hifi -d ref_k19_w19.mmi ref.fa
+# The above corresponds to: minimap2 -k19 -w19 -d ref_k19_w19.mmi ref.fa
+ref_mmi: "~/genomes/GCA_000001405.15_GRCh38_no_alt_analysis_set_k19_w19.mmi"
+
+# Outer adapter sequence (default Illumina TruSeq):
+# <outer_adapter_5> <sample_adapter_5> <sequence> <sample_adapter_3> <outer_adapter_3>
+outer_adapter_5: CTTTCCCTACACGACGCTCTTCCGATCT
+outer_adapter_3: AGATCGGAAGAGCACACGTCTGAACTCC
+
+# Threads argument for each tool.
+# This allows users to control resources using the snakemake "--jobs" flag. 
+# Snakemake will start as many jobs as possible such that the sum of the threads
+# for these jobs is less than or eqaul to --jobs.
+threads:
+  minimap2: 4
+  sniffles: 10
+
+# Output folder:
+out_folder: "TES_output"
+
+# Settings for cutadapt:
+cutadapt_flags:
+  flag1: "--minimum-length 1000"
+
+# Filters to insertion identification:
+identify_insertions:
+  min_MAPQ: 50
+  min_len: 30
+
+# Settings for sniffles:
+sniffles_flags:
+  flag1: "--mosaic"
+  flag2: "--mosaic-include-germline"
+  flag3: "--minsvlen 20"
+  flag4: "--minsupport 1"
+  flag5: "--bnd-min-split-length 100"
+  flag6: "--qc-output-all"
+
+
+

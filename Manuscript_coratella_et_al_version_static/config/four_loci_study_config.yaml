@@ -1,0 +1,10 @@
+# Config file for TES run on the "four loci study" #
+
+ref_genome: "/dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/genomes/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
+ref_mmi: "/dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/genomes/GCA_000001405.15_GRCh38_no_alt_analysis_set_k19_w19.mmi"
+
+samplesheet: "/dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/tes_pipeline_refactor/config/four_loci_study.tsv"
+working_dir: "/dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/TES_pipeline_output"
+out_folder: "four_loci_study"
+
+

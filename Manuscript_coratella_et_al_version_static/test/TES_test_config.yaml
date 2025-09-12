@@ -1,0 +1,10 @@
+# Config file for TES test #
+
+working_dir: "."
+out_folder: "TES_output"
+samplesheet: "samplesheet.tsv"
+
+ref_genome: "test_genome.fa"
+# minimap2 -k19 -w19 -d test_genome_k19_w19.mmi test_genome.fa
+ref_mmi: "test_genome_k19_w19.mmi"
+

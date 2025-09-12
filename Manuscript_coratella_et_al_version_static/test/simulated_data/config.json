@@ -1,0 +1,55 @@
+{
+    "pipeline_dir": "../simulation",
+    "genome_fnam": "test_genome.fa",
+    "AAV_genome_fnam": "pAAV-CMV-EGFP-WPRE.fa",
+    "tes_panel_fnam": "pAAV-CMV-EGFP-WPRE.fa",
+    "workdir": "/Users/davidkr2/bitbucket/davidkr2/tes_pipeline/test",
+    "run_name": "simulated_data",
+    "adapters_fnam": false,
+    "keep_intermediate": false,
+    "threads": 15,
+    "repeats": 2,
+    "integration": {
+        "events": 3,
+        "expansion": 1,
+        "size": "1400,1100,25",
+        "mean_aav_len": 1400,
+        "stdev_aav_len": 1100,
+        "min_aav_len": 25,
+        "site_draws": 1000
+    },
+    "enrichment": {
+        "leakage": 10,
+        "enrich_prob": "0.005,40",
+        "additive": false,
+        "amplification": 5,
+        "additive_flag": "",
+        "min_len": 40
+    },
+    "read_sim": {
+        "genome_reads": 4000,
+        "coverage": 3,
+        "length": "9000,3000,30000",
+        "mean_frag_len": 9000,
+        "stdev_frag_len": 3000,
+        "max_len": 30000
+    },
+    "badread": {
+        "identity": "30,3",
+        "error_model": "pacbio2021",
+        "qscore_model": "pacbio2021",
+        "start_adapter": "100,100",
+        "end_adapter": "100,100",
+        "start_adapter_seq": 0,
+        "end_adapter_seq": 0,
+        "chimeras": 1,
+        "glitches": "3000,1,1",
+        "junk_reads": 0,
+        "random_reads": 0
+    },
+    "minimap": {
+        "k": 21
+    },
+    "run_folder": "/Users/davidkr2/bitbucket/davidkr2/tes_pipeline/test/simulated_data",
+    "config_json": "/Users/davidkr2/bitbucket/davidkr2/tes_pipeline/test/simulated_data/config.json"
+}

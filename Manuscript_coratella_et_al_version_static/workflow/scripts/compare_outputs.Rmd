@@ -1,0 +1,432 @@
+---
+title: "Compare outputs "
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    theme: cosmo
+  md_document:
+    variant: gfm
+always_allow_html: true
+---
+
+# Compare outputs {.tabset}
+
+## Setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = FALSE,  fig.path = "plots/")
+library(GenomicRanges)
+library(tidyverse)
+library(Biostrings)
+require(BiocGenerics)
+library(gt23)
+# remotes::install_github("helixscript/gt23")
+options(scipen = 5)
+library(kableExtra)
+library(UpSetR)
+#library(TxDb.Mmusculus.UCSC.mm39.refGene) #needed for mice
+library(yaml)
+library(stringr)
+library(VariantAnnotation)
+library(data.table)
+currdir = getwd()
+basename=dirname(currdir)
+
+
+sampleConfigFile = file.path(currdir, "TES_manifest.yml")
+samples = names(read_yaml(file=sampleConfigFile)$samples)
+vector = "VectorbuilderID_VB190926-1395dab_AAV6GFP"
+
+#create output dirs
+project_dir = file.path(currdir, "TES")
+datadir = file.path(project_dir, "identified")
+statistics.dir = file.path(project_dir, "statistics")
+outdir = file.path(project_dir, "compare")
+dir.create(outdir,showWarnings = F)
+for (sample in samples) {
+  dir.create(file.path(outdir, sample),showWarnings = F)
+}
+
+
+```
+
+#functions --> to be adapted to AAV and species
+```{r}
+
+nearestGenomicFeature2 <- function (query, subject = NULL, subject.exons = NULL, subjectSide = "either", geneList = NULL) {
+  if (is.null(subject)) stop("subject parameter can not be NULL.")
+  if (is.null(subject.exons)) stop("subject.exons parameter can not be NULL.")
+  if (!is.null(geneList)) {
+    subject <- subset(subject, toupper(name2) %in% toupper(geneList))
+    #subject <- subject[subject$gene_name %in% (geneList)]
+  }
+  message("Starting nearestGenomicFeature() -- subject contains ", length(ranges), ", subject.exon contains ", length(subject.exons), " ranges.")
+  if (subjectSide %in% c("start", "end", "midpoint")) {
+    message("subjectSide parameter: ", subjectSide)
+    options(warn = -1)
+    if (subjectSide == "start") 
+      subject <- GenomicRanges::flank(subject, width = -1)
+    if (subjectSide == "end") 
+      subject <- GenomicRanges::flank(subject, width = -1, 
+                                      start = FALSE)
+    if (subjectSide == "midpoint") 
+      ranges(subject) <- IRanges(mid(ranges(subject)), 
+                                 width = 1)
+    options(warn = 0)
+  }
+  options(stringsAsFactors = FALSE)
+  query.df <- GenomicRanges::as.data.frame(query)
+  subject.df <- GenomicRanges::as.data.frame(subject)
+  query.df$strand <- as.character(query.df$strand)
+  subject.df$strand <- as.character(subject.df$strand)
+  #subject.df$name2 <- as.character(subject.df$gene_name)
+  subject.exons.df <- GenomicRanges::as.data.frame(subject.exons)
+  query.df$inFeature <- FALSE
+  query.df$nearestFeature <- "None.found"
+  query.df$nearestFeatureStrand <- "None.found"
+  query.df$inFeatureExon <- FALSE
+  query.df$inFeatureSameOrt <- FALSE
+  query.df$nearestFeatureStart <- Inf
+  query.df$nearestFeatureEnd <- Inf
+  query.df$nearestFeatureDist <- Inf
+  o <- suppressWarnings(GenomicRanges::nearest(query, subject, 
+                                               select = "all", ignore.strand = TRUE))
+  if (length(o) > 0) {
+    createCol <- function(a, b, n) {
+      paste0(unique(cbind(a, b))[, n], collapse = ",")
+    }
+    a <- dplyr::group_by(data.frame(o), queryHits) %>% dplyr::mutate(gene = createCol(subject.df[subjectHits, ]$name2, subject.df[subjectHits, ][["strand"]], 1), 
+    strand = createCol(subject.df[subjectHits, ]$name2, 
+                       subject.df[subjectHits, ][["strand"]], 2), hitStart = min(subject.df[subjectHits, 
+                       ][["start"]]), hitEnd = max(subject.df[subjectHits, 
+                       ][["end"]])) %>% dplyr::ungroup() %>% dplyr::select(queryHits, 
+                                                                           gene, strand, hitStart, hitEnd) %>% dplyr::distinct() %>% 
+      data.frame()
+    if (nrow(a) > 0) {
+      query.df[a$queryHits, ]$nearestFeature <- a$gene
+      query.df[a$queryHits, ]$nearestFeatureStrand <- a$strand
+      query.df[a$queryHits, ]$nearestFeatureStart <- a$hitStart
+      query.df[a$queryHits, ]$nearestFeatureEnd <- a$hitEnd
+    }
+  }
+  o <- suppressWarnings(GenomicRanges::findOverlaps(query, 
+                                                    subject, select = "all", ignore.strand = TRUE, type = "any"))
+  if (length(o) > 0) {
+    a <- dplyr::group_by(data.frame(o), queryHits) %>% dplyr::mutate(gene = paste(unique(subject.df[subjectHits, 
+    ]$name2), collapse = ",")) %>% dplyr::ungroup() %>% 
+      dplyr::select(queryHits, gene) %>% dplyr::distinct() %>% 
+      data.frame()
+    if (nrow(a) > 0) 
+      query.df[a$queryHits, ]$inFeature <- TRUE
+  }
+  o <- suppressWarnings(GenomicRanges::distanceToNearest(query, 
+                                                         subject, select = "all", ignore.strand = TRUE))
+  if (length(o) > 0) {
+    a <- dplyr::group_by(data.frame(o), queryHits) %>% dplyr::top_n(-1, 
+                                                                    distance) %>% dplyr::ungroup() %>% dplyr::select(queryHits, 
+                                                                                                                     distance) %>% dplyr::distinct() %>% data.frame()
+    if (nrow(a) > 0) 
+      query.df[a$queryHits, ]$nearestFeatureDist <- a$distance
+  }
+  query.df$nearestFeatureBoundary <- ifelse(abs(query.df$start - 
+                                                  query.df$nearestFeatureStart) > abs(query.df$start - 
+                                                                                        query.df$nearestFeatureEnd), query.df$nearestFeatureEnd, 
+                                            query.df$nearestFeatureStart)
+  query.df$nearestFeatureDist <- query.df$nearestFeatureDist * 
+    sign(query.df$start - query.df$nearestFeatureBoundary)
+  query.df$nearestFeatureDist <- ifelse(query.df$nearestFeatureStrand == 
+                                          "+", query.df$nearestFeatureDist, query.df$nearestFeatureDist * 
+                                          -1)
+  query.df$nearestFeatureStart <- NULL
+  query.df$nearestFeatureEnd <- NULL
+  query.df$nearestFeatureBoundary <- NULL
+  o <- suppressWarnings(GenomicRanges::findOverlaps(query, 
+                                                    subject.exons, select = "all", ignore.strand = TRUE, 
+                                                    type = "any"))
+  if (length(o) > 0) {
+    a <- dplyr::group_by(data.frame(o), queryHits) %>% dplyr::mutate(gene = paste(unique(subject.exons.df[subjectHits, 
+    ]$name2), collapse = ",")) %>% dplyr::ungroup() %>% 
+      dplyr::select(queryHits, gene) %>% dplyr::distinct() %>% 
+      data.frame()
+    if (nrow(a) > 0) 
+      query.df[a$queryHits, ]$inFeatureExon <- TRUE
+  }
+  query.df$nearestFeatureStrand2 <- unlist(lapply(strsplit(query.df$nearestFeatureStrand, 
+                                                           ","), function(x) {
+                                                             paste(unique(x), collapse = ",")
+                                                           }))
+  i <- grepl(",", query.df$nearestFeatureStrand2)
+  if (any(i)) 
+    query.df[i, ]$nearestFeatureStrand2 <- "*"
+  query.df$inFeatureSameOrt <- query.df$strand == query.df$nearestFeatureStrand2
+  query.df$nearestFeatureStrand2 <- NULL
+  GenomicRanges::makeGRangesFromDataFrame(query.df, keep.extra.columns = TRUE)
+}
+assignInNamespace("nearestGenomicFeature", nearestGenomicFeature2, "gt23")
+
+annotateIntSites2 <- function (sites, CPUs=2, genomeFileMap = NULL, oncoGeneList = NULL, oncoGeneListSide = "either", lymphomaGenesListSide = "either") {
+  if (is.null(genomeFileMap)) genomeFileMap <- gt23::defaultGenomeFileMappings()
+  gt23::validateGenomeFileMap(genomeFileMap)
+  GenomicRanges::makeGRangesFromDataFrame(dplyr::bind_rows(
+    lapply(split(sites, paste(sites$patient, sites$refGenome)), function(x) {
+      message(paste("Starting", x$patient[1], "/", x$refGenome[1]))
+      if (!x$refGenome[1] %in% names(genomeFileMap)) stop(paste("Error -- ", x$refGenome[1], " is not defined in the genomeFileMap list."))
+      genome_refSeq <- eval(parse(text = paste0("gt23::", genomeFileMap[[x$refGenome[1]]]$genes)))
+      #genome_refSeq <- mm39_gene
+      genome_refSeqExons <- eval(parse(text = paste0("gt23::", genomeFileMap[[x$refGenome[1]]]$exons)))
+      #genome_refSeqExons <- mm39_exon
+      if (is.null(oncoGeneList)) {
+        oncoGeneList <- eval(parse(text = paste0("gt23::", genomeFileMap[[x$refGenome[1]]]$oncoGeneList)))
+        #oncoGeneList = str_to_title(gt23::mm9.oncoGeneList)
+      } else {
+        message("Using custom oncogene list with ", dplyr::n_distinct(oncoGeneList), 
+                " gene names.")
+      }
+      lymphomaGenesList <- eval(parse(text = paste0("gt23::", 
+                                                    genomeFileMap[[x$refGenome[1]]]$lymphomaGenesList)))
+      message(paste0("oncoGeneList: ", paste0("gt23::", genomeFileMap[[x$refGenome[1]]]$oncoGeneList), 
+                     " - ", length(oncoGeneList), "  genes\n", "lymphomaGenesList: ", 
+                     paste0("gt23::", genomeFileMap[[x$refGenome[1]]]$lymphomaGenesList), 
+                     " - ", length(lymphomaGenesList), "  genes\n"))
+      x$s <- dplyr::ntile(seq_along(x), CPUs)
+      names(x) <- NULL
+      x <- unlist(GenomicRanges::GRangesList(lapply(split(x, x$s), function(x2) {
+        x2$n <- 1:length(x2)
+        x2 <- gt23::nearestGenomicFeature(x2, subject = genome_refSeq, 
+                                          subject.exons = genome_refSeqExons)
+        x2 <- x2[order(x2$n)]
+        if (length(oncoGeneList) > 0) {
+          o <- gt23::nearestGenomicFeature(x2, subject = genome_refSeq, 
+                                           subject.exons = genome_refSeqExons, geneList = oncoGeneList, 
+                                           subjectSide = oncoGeneListSide)
+          o <- o[order(o$n)]
+          d <- data.frame(GenomicRanges::mcols(x2))
+          d <- d[order(d$n), ]
+          stopifnot(all(o$n == d$n))
+          d$nearestOncoFeature <- o$nearestFeature
+          d$nearestOncoFeatureDist <- o$nearestFeatureDist
+          d$nearestOncoFeatureStrand <- o$nearestFeatureStrand
+          GenomicRanges::mcols(x2) <- d
+        }
+        if (length(lymphomaGenesList) > 0) {
+          o <- gt23::nearestGenomicFeature(x2, subject = genome_refSeq, 
+                                           subject.exons = genome_refSeqExons, geneList = lymphomaGenesList, 
+                                           subjectSide = lymphomaGenesListSide)
+          o <- o[order(o$n)]
+          d <- data.frame(GenomicRanges::mcols(x2))
+          d <- d[order(d$n), ]
+          stopifnot(all(o$n == d$n))
+          d$nearestlymphomaFeature <- o$nearestFeature
+          d$nearestlymphomaFeatureDist <- o$nearestFeatureDist
+          d$nearestlymphomaFeatureStrand <- o$nearestFeatureStrand
+          GenomicRanges::mcols(x2) <- d
+        }
+        x2$n <- NULL
+        x2
+      })))
+      x$s <- NULL
+      names(x) <- NULL
+      #      parallel::stopCluster(cluster)
+      data.frame(x)
+    })), keep.extra.columns = TRUE)
+}
+assignInNamespace("annotateIntSites", annotateIntSites2, "gt23")
+
+
+# Function to process a single VCF file and return a data frame
+process_vcf <- function(vcf_file, genome = "hg38") {
+  
+  # Read VCF file
+  vcf <- readVcf(vcf_file, genome = genome)
+  if (length(rowRanges(vcf)) == 0) {
+    return(NULL)  # Skip empty or invalid VCF files
+  } else {
+  
+  #annotate genes
+  seqlevels(rowRanges(vcf)) <- paste0("chr", seqlevels(rowRanges(vcf))) 
+  vcf_gr <- rowRanges(vcf)
+  mcols(vcf_gr)$patient <- "Sample1"         # Add patient identifier
+  mcols(vcf_gr)$refGenome <- "hg38"  
+  
+  s <- gt23::annotateIntSites(vcf_gr)
+  s <- as.data.frame(s)
+  
+  #extract needed info from vcf file 
+  vcf_df <- data.frame(
+  chr = as.character(seqnames(rowRanges(vcf))),
+  region = tools::file_path_sans_ext(basename(vcf_file)),
+  start = start(rowRanges(vcf)),
+  end = info(vcf)$END,
+  STDEV_POS = info(vcf)$STDEV_POS,
+  SVtype = info(vcf)$SVTYPE,
+  SVlength = info(vcf)$SVLEN,
+  ALT = sapply(alt(vcf), function(x) paste(x, collapse = ",")),
+  qual = rowRanges(vcf)$QUAL,
+  is_precise = info(vcf)$PRECISE,
+  is_mosaic = info(vcf)$MOSAIC,
+  read_support = info(vcf)$SUPPORT,
+  coverage = sapply(info(vcf)$COVERAGE, function(x) paste(x, collapse = ",")),
+  VAF = info(vcf)$VAF
+)
+  #harmonize chr names between vcf_df and s and add gene info to vcf
+  colnames(s)[colnames(s) == "seqnames"] <- "chr"
+  vcf_df <- merge(vcf_df, 
+                s[, c("chr", "start", "ALT", "inFeature", "nearestFeature", "nearestFeatureDist")], 
+                by = c("chr", "start", "ALT"), 
+                all.x = TRUE)
+  }
+}
+
+create_coverage_plot <- function(coverage) {
+  max_val <- max(coverage$coverage)
+  p <- ggplot(coverage, aes(x = position, y = coverage)) +
+    ggtitle('Coverage of AAV Genome') +
+    xlab('Position') +
+    ylab('Coverage') +
+    theme_minimal() +
+    
+    geom_line(color = 'blue') +
+    annotate("rect", xmin = 1, xmax = 130, ymin = -Inf, ymax = Inf, fill = "#FFB3BA", alpha = 0.5) +
+    annotate("rect", xmin = 193, xmax = 801, ymin = -Inf, ymax = Inf, fill = "#FFDFBA", alpha = 0.5) +
+    annotate("rect", xmin = 809, xmax = 1301, ymin = -Inf, ymax = Inf, fill = "#FFFFBA", alpha = 0.5) +
+    annotate("rect", xmin = 1341, xmax = 2060, ymin = -Inf, ymax = Inf, fill = "#BAFFC9", alpha = 0.5) +
+    annotate("rect", xmin = 2074, xmax = 2662, ymin = -Inf, ymax = Inf, fill = "#BAE1FF", alpha = 0.5) +
+    annotate("rect", xmin = 2685, xmax = 3165, ymin = -Inf, ymax = Inf, fill = "#D7BAFF", alpha = 0.5) +
+    annotate("rect", xmin = 3202, xmax = 3342, ymin = -Inf, ymax = Inf, fill = "#FFB3BA", alpha = 0.5) +
+    annotate("rect", xmin = 3343, xmax = 5939, ymin = -Inf, ymax = Inf, fill = "#D3D3D3", alpha = 0.5) +
+    annotate("text", x = 1, y = max_val, label = "5-ITR", angle = -90, vjust = -0.5, hjust = 0, size = 3) +
+    annotate("text", x = 200, y = max_val, label = "CMV", angle = -90, vjust = -0.5, hjust = 0, size = 3) +
+    annotate("text", x = 820, y = max_val, label = "hGlobin_intron", angle = -90, vjust = -0.5, hjust = 0, size = 3) +
+    annotate("text", x = 1350, y = max_val, label = "eGFP", angle = -90, vjust = -0.5, hjust = 0, size = 3) +
+    annotate("text", x = 2090, y = max_val, label = "WRPE", angle = -90, vjust = -0.5, hjust = 0, size = 3) +
+    annotate("text", x = 2695, y = max_val, label = "hGH", angle = -90, vjust = -0.5, hjust = 0, size = 3) +
+    annotate("text", x = 3212, y = max_val, label = "3-ITR", angle = -90, vjust = -0.5, hjust = 0, size = 3) +
+    annotate("text", x = 3353, y = max_val, label = "plasmid_backbone", angle = -90, vjust = -0.5, hjust = 0, size = 3)
+  
+  # Return the plot object
+  return(p)
+}
+
+get_statistics <- function(coverage) {
+  #Annotate coverage data with genome regions
+  coverage <- coverage %>%
+  mutate(feature = case_when(
+    position >= 1 & position <= 130 ~ "5-ITR",
+    position >= 193 & position <= 801 ~ "CMV",
+    position >= 809 & position <= 1301 ~ "Intron",
+    position >= 1341 & position <= 2060 ~ "eGFP",
+    position >= 2074 & position <= 2662 ~ "WRPE",
+    position >= 2685 & position <= 3165 ~ "hGHpa",
+    position >= 3202 & position <= 3342 ~ "3-ITR",
+    position >= 3342 & position <= 5939 ~ "plasmid_backbone",
+    TRUE ~ "intergenic"  # Positions outside the defined ranges
+  ))
+
+  #Calculate percentage of AAV genome covered (excluding plasmid backbone)
+  AAV_genome <- 3342  # Total number of positions
+  covered_positions <- sum(coverage[1:3342, ]$coverage > 0)  # Positions with non-zero coverage
+  total_coverage_percentage <- covered_positions / AAV_genome * 100
+
+  # Coverage percentage for regions
+  region_coverage <- coverage %>%
+  group_by(feature) %>%
+  summarise(
+    region_positions = n(),
+    length = n(),
+    covered_positions = sum(coverage > 0),
+    average_coverage = mean(coverage),
+    coverage_percentage = covered_positions / region_positions * 100
+  )
+  
+  # Identify duplications (coverage 2x the average)
+  mean_coverage <- mean(coverage[coverage$coverage  > 0,]$coverage)  # Average coverage of all covered positions
+  duplicated_positions <- coverage %>%
+  filter(coverage >= 2 * mean_coverage)
+  
+  #store all in one data.frame
+  region_coverage <- region_coverage %>%
+  dplyr::select(-region_positions) %>%
+  mutate(duplication = feature %in% duplicated_positions$feature, 
+         totalprctAAVcoverage = total_coverage_percentage )
+  return(region_coverage)
+}
+
+```
+
+
+## Read in TES output
+
+
+```{r message=FALSE}
+samples_vcf_data <- list()
+
+# Loop through each sample folder and process its VCF files
+for (i in samples) {
+  vcf_files <- list.files(file.path(statistics.dir,i), pattern = ".vcf$", full.names = TRUE)
+  sample_vcf_data <- lapply(vcf_files, process_vcf)
+  sample_vcf_data <- Filter(Negate(is.null), sample_vcf_data)
+  samples_vcf_data[[i]] <- do.call(rbind, sample_vcf_data)
+}
+
+```
+# filter criteria for clones
+```{r}
+samples_vcf_data <- lapply(samples_vcf_data, function(df) {
+    df[(df$VAF > 0.1 | is.na(df$VAF)) #& df$read_support > 50 
+      , ] 
+}
+  )
+```
+
+# Save results
+```{r}
+for (sample in samples){
+  write.csv(samples_vcf_data[[sample]], file.path(outdir, sample, "sniffels.output.csv"))
+}
+```
+
+
+
+# Coverage plots and statistics for each IS-range
+
+for the publication, I would remove the colored background and instead we can do something like this: https://www.reddit.com/r/bioinformatics/comments/it8t8c/plotting_genome_gene_coverage/
+We could also put the IS of every sample in one plot
+
+```{r}
+#slow
+for (sample in samples){
+txt_files <- list.files(file.path(statistics.dir,sample), pattern = ".txt$", full.names = TRUE)
+txt_files <- txt_files[!grepl("_patterns.txt$", txt_files)]
+
+coverage_statistics <- list()
+
+  for (i in seq_along(txt_files)) {
+  coverage <- fread(txt_files[i], col.names = c("chromosome", "position", "coverage"), data.table=FALSE) %>%
+  filter(chromosome == vector)
+  # Check if coverage is empty after filtering
+  if (nrow(coverage) > 0) {
+    # Create plot only if coverage is not empty
+    p <- create_coverage_plot(coverage)
+    region <- tools::file_path_sans_ext(basename(txt_files[i]))
+    ggsave(file.path(outdir, sample, paste(region, "plot.png", sep = ".")), plot = p)
+    
+    # Get statistics
+    region_coverage <- get_statistics(coverage)
+    region_coverage <- region_coverage %>%
+      mutate(region = tools::file_path_sans_ext(basename(txt_files[i])))
+    coverage_statistics[[i]] <- region_coverage
+  } else {
+    # Skip processing for empty filtered coverage
+    message(paste("Skipping file:", txt_files[i], "- No data after filtering for chromosome"))
+  }
+}
+  combined_sample_statistics <- bind_rows(coverage_statistics)
+  write.csv(combined_sample_statistics, file.path(outdir, sample, "coverageAAV.output.csv"))
+}
+```
+
+
+```{r}
+sessionInfo()
+```

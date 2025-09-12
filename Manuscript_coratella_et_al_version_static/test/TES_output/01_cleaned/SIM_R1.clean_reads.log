@@ -1,0 +1,19 @@
+This is cutadapt 5.0 with Python 3.12.10
+Command line parameters: --minimum-length 1000 -a ^TACACCCAATATTCGACACTCTTTCCCTACACGACGCTCTTCCGATCT...AGATCGGAAGAGCACACGTCTGAACTCCGTCACTATCTTCAGCATCTC -o /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/01_cleaned/SIM_R1.cleaned.fastq.gz simulated_data/rep1_simulated_reads.fastq.gz
+Processing single-end reads on 1 core ...
+
+=== Summary ===
+
+Total reads processed:                     136
+Reads with adapters:                         0 (0.0%)
+
+== Read fate breakdown ==
+Reads that were too short:                   0 (0.0%)
+Reads written (passing filters):           136 (100.0%)
+
+Total basepairs processed:     1,190,884 bp
+Total written (filtered):      1,190,884 bp (100.0%)
+
+=== Adapter 1 ===
+
+Sequence: TACACCCAATATTCGACACTCTTTCCCTACACGACGCTCTTCCGATCT...AGATCGGAAGAGCACACGTCTGAACTCCGTCACTATCTTCAGCATCTC; Type: linked; Length: 48+48; 5' trimmed: 0 times; 3' trimmed: 0 times

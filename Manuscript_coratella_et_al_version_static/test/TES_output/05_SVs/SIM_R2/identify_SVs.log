@@ -1,0 +1,126 @@
+[M::main::0.007*1.10] loaded/built the index for 3 target sequence(s)
+[M::mm_mapopt_update::0.009*1.08] mid_occ = 50
+[M::mm_idx_stat] kmer size: 19; skip: 19; is_hpc: 0; #seq: 3
+[M::mm_idx_stat::0.010*1.07] distinct minimizers: 87071 (97.20% are singletons); average occurrences: 1.093; average spacing: 9.926; total length: 944283
+[INFO][0m 15 patterns loaded from file
+[M::worker_pipeline::0.057*0.80] mapped 15 sequences
+[M::main] Version: 2.30-r1287
+[M::main] CMD: minimap2 -t 4 -a -x map-hifi -s25 -m25 /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/custom_index/pAAV-CMV-EGFP-WPRE_custom_genome_index.mmi -
+[M::main] Real time: 0.058 sec; CPU: 0.047 sec; Peak RSS: 0.012 GB
+2025-06-16 17:47:00,834 INFO sniffles.main (1919539): Running Sniffles2, build 2.6.2
+2025-06-16 17:47:00,834 INFO sniffles.main (1919539):   Run Mode: call_sample
+2025-06-16 17:47:00,834 INFO sniffles.main (1919539):   Start on: 2025/06/16 17:47:00
+2025-06-16 17:47:00,834 INFO sniffles.main (1919539):   Working dir: /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test
+2025-06-16 17:47:00,834 INFO sniffles.main (1919539):   Used command: /home/lemmemy1/.conda/envs/TES_environment/bin/sniffles --input /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr10:99176870-99650624_149936_156968.bam --vcf /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr10:99176870-99650624_149936_156968.vcf --mosaic --mosaic-include-germline --minsvlen 20 --minsupport 1 --bnd-min-split-length 100 --qc-output-all
+2025-06-16 17:47:00,834 INFO sniffles.main (1919539): ==============================
+2025-06-16 17:47:00,876 INFO sniffles.main (1919539): Opening for reading: /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr10:99176870-99650624_149936_156968.bam
+2025-06-16 17:47:00,879 INFO sniffles.main (1919539): Opening for writing: /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr10:99176870-99650624_149936_156968.vcf (single-sample, sorted)
+2025-06-16 17:47:00,882 INFO sniffles.main (1919539): 
+2025-06-16 17:47:00,882 INFO sniffles.main (1919539): Analyzing 15 alignments total...
+2025-06-16 17:47:00,882 INFO sniffles.main (1919539): 
+2025-06-16 17:47:00,882 INFO sniffles.worker (1919539): Starting worker 0
+2025-06-16 17:47:00,883 INFO sniffles.worker (1919539): Starting worker 1
+2025-06-16 17:47:00,885 INFO sniffles.worker (1919539): Starting worker 2
+2025-06-16 17:47:00,886 INFO sniffles.worker (1919539): Starting worker 3
+2025-06-16 17:47:00,887 INFO sniffles.worker (1919539): Dispatched task #0 to worker 0 (2  tasks left)
+2025-06-16 17:47:00,887 INFO sniffles.worker (1919539): Dispatched task #1 to worker 1 (1  tasks left)
+2025-06-16 17:47:00,887 INFO sniffles.worker (1919539): Dispatched task #2 to worker 2 (0  tasks left)
+2025-06-16 17:47:00,887 INFO sniffles.worker (1919539): Worker 3 shutting down...
+2025-06-16 17:47:00,988 INFO sniffles.worker (1919539): Worker 0 got result for task #0
+2025-06-16 17:47:00,988 INFO sniffles.worker (1919539): Worker 1 got result for task #1
+2025-06-16 17:47:00,988 INFO sniffles.worker (1919539): Worker 2 got result for task #2
+2025-06-16 17:47:01,088 INFO sniffles.worker (1919539): Worker 0 shutting down...
+2025-06-16 17:47:01,088 INFO sniffles.worker (1919539): Worker 1 shutting down...
+2025-06-16 17:47:01,088 INFO sniffles.worker (1919539): Worker 2 shutting down...
+2025-06-16 17:47:01,095 INFO sniffles.worker (1919539): Worker 0 done (code 0).
+2025-06-16 17:47:01,096 INFO sniffles.worker (1919539): Worker 1 done (code 0).
+2025-06-16 17:47:01,096 INFO sniffles.worker (1919539): Worker 2 done (code 0).
+2025-06-16 17:47:01,096 INFO sniffles.worker (1919539): Worker 3 done (code 0).
+2025-06-16 17:47:01,096 INFO sniffles.main (1919539): Took 0.21s.
+2025-06-16 17:47:01,096 INFO sniffles.main (1919539): 
+2025-06-16 17:47:01,098 INFO sniffles.main (1919539): Wrote 1 called SVs to /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr10:99176870-99650624_149936_156968.vcf (single-sample, sorted)
+Processed: /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr10:99176870-99650624_149936_156968 (SVs saved to /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr10:99176870-99650624_149936_156968.vcf)
+[M::main::0.008*1.03] loaded/built the index for 3 target sequence(s)
+[M::mm_mapopt_update::0.009*1.02] mid_occ = 50
+[M::mm_idx_stat] kmer size: 19; skip: 19; is_hpc: 0; #seq: 3
+[M::mm_idx_stat::0.010*1.02] distinct minimizers: 87071 (97.20% are singletons); average occurrences: 1.093; average spacing: 9.926; total length: 944283
+[INFO][0m 12 patterns loaded from file
+[M::worker_pipeline::0.053*0.50] mapped 12 sequences
+[M::main] Version: 2.30-r1287
+[M::main] CMD: minimap2 -t 4 -a -x map-hifi -s25 -m25 /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/custom_index/pAAV-CMV-EGFP-WPRE_custom_genome_index.mmi -
+[M::main] Real time: 0.055 sec; CPU: 0.028 sec; Peak RSS: 0.014 GB
+2025-06-16 17:47:01,375 INFO sniffles.main (1919594): Running Sniffles2, build 2.6.2
+2025-06-16 17:47:01,375 INFO sniffles.main (1919594):   Run Mode: call_sample
+2025-06-16 17:47:01,375 INFO sniffles.main (1919594):   Start on: 2025/06/16 17:47:01
+2025-06-16 17:47:01,375 INFO sniffles.main (1919594):   Working dir: /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test
+2025-06-16 17:47:01,375 INFO sniffles.main (1919594):   Used command: /home/lemmemy1/.conda/envs/TES_environment/bin/sniffles --input /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr10:99176870-99650624_169083_173592.bam --vcf /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr10:99176870-99650624_169083_173592.vcf --mosaic --mosaic-include-germline --minsvlen 20 --minsupport 1 --bnd-min-split-length 100 --qc-output-all
+2025-06-16 17:47:01,375 INFO sniffles.main (1919594): ==============================
+2025-06-16 17:47:01,416 INFO sniffles.main (1919594): Opening for reading: /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr10:99176870-99650624_169083_173592.bam
+2025-06-16 17:47:01,420 INFO sniffles.main (1919594): Opening for writing: /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr10:99176870-99650624_169083_173592.vcf (single-sample, sorted)
+2025-06-16 17:47:01,422 INFO sniffles.main (1919594): 
+2025-06-16 17:47:01,423 INFO sniffles.main (1919594): Analyzing 12 alignments total...
+2025-06-16 17:47:01,423 INFO sniffles.main (1919594): 
+2025-06-16 17:47:01,423 INFO sniffles.worker (1919594): Starting worker 0
+2025-06-16 17:47:01,424 INFO sniffles.worker (1919594): Starting worker 1
+2025-06-16 17:47:01,425 INFO sniffles.worker (1919594): Starting worker 2
+2025-06-16 17:47:01,426 INFO sniffles.worker (1919594): Starting worker 3
+2025-06-16 17:47:01,428 INFO sniffles.worker (1919594): Dispatched task #0 to worker 0 (2  tasks left)
+2025-06-16 17:47:01,428 INFO sniffles.worker (1919594): Dispatched task #1 to worker 1 (1  tasks left)
+2025-06-16 17:47:01,428 INFO sniffles.worker (1919594): Dispatched task #2 to worker 2 (0  tasks left)
+2025-06-16 17:47:01,428 INFO sniffles.worker (1919594): Worker 3 shutting down...
+2025-06-16 17:47:01,528 INFO sniffles.worker (1919594): Worker 0 got result for task #0
+2025-06-16 17:47:01,529 INFO sniffles.worker (1919594): Worker 1 got result for task #1
+2025-06-16 17:47:01,529 INFO sniffles.worker (1919594): Worker 2 got result for task #2
+2025-06-16 17:47:01,629 INFO sniffles.worker (1919594): Worker 0 shutting down...
+2025-06-16 17:47:01,629 INFO sniffles.worker (1919594): Worker 1 shutting down...
+2025-06-16 17:47:01,629 INFO sniffles.worker (1919594): Worker 2 shutting down...
+2025-06-16 17:47:01,636 INFO sniffles.worker (1919594): Worker 0 done (code 0).
+2025-06-16 17:47:01,636 INFO sniffles.worker (1919594): Worker 1 done (code 0).
+2025-06-16 17:47:01,636 INFO sniffles.worker (1919594): Worker 2 done (code 0).
+2025-06-16 17:47:01,636 INFO sniffles.worker (1919594): Worker 3 done (code 0).
+2025-06-16 17:47:01,636 INFO sniffles.main (1919594): Took 0.21s.
+2025-06-16 17:47:01,636 INFO sniffles.main (1919594): 
+2025-06-16 17:47:01,638 INFO sniffles.main (1919594): Wrote 1 called SVs to /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr10:99176870-99650624_169083_173592.vcf (single-sample, sorted)
+Processed: /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr10:99176870-99650624_169083_173592 (SVs saved to /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr10:99176870-99650624_169083_173592.vcf)
+[M::main::0.007*1.04] loaded/built the index for 3 target sequence(s)
+[M::mm_mapopt_update::0.009*1.04] mid_occ = 50
+[M::mm_idx_stat] kmer size: 19; skip: 19; is_hpc: 0; #seq: 3
+[M::mm_idx_stat::0.010*1.03] distinct minimizers: 87071 (97.20% are singletons); average occurrences: 1.093; average spacing: 9.926; total length: 944283
+[INFO][0m 10 patterns loaded from file
+[M::worker_pipeline::0.052*0.53] mapped 10 sequences
+[M::main] Version: 2.30-r1287
+[M::main] CMD: minimap2 -t 4 -a -x map-hifi -s25 -m25 /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/custom_index/pAAV-CMV-EGFP-WPRE_custom_genome_index.mmi -
+[M::main] Real time: 0.054 sec; CPU: 0.029 sec; Peak RSS: 0.011 GB
+2025-06-16 17:47:01,931 INFO sniffles.main (1919644): Running Sniffles2, build 2.6.2
+2025-06-16 17:47:01,932 INFO sniffles.main (1919644):   Run Mode: call_sample
+2025-06-16 17:47:01,932 INFO sniffles.main (1919644):   Start on: 2025/06/16 17:47:01
+2025-06-16 17:47:01,932 INFO sniffles.main (1919644):   Working dir: /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test
+2025-06-16 17:47:01,932 INFO sniffles.main (1919644):   Used command: /home/lemmemy1/.conda/envs/TES_environment/bin/sniffles --input /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr16:58487131-58954316_250028_255090.bam --vcf /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr16:58487131-58954316_250028_255090.vcf --mosaic --mosaic-include-germline --minsvlen 20 --minsupport 1 --bnd-min-split-length 100 --qc-output-all
+2025-06-16 17:47:01,932 INFO sniffles.main (1919644): ==============================
+2025-06-16 17:47:01,974 INFO sniffles.main (1919644): Opening for reading: /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr16:58487131-58954316_250028_255090.bam
+2025-06-16 17:47:01,988 INFO sniffles.main (1919644): Opening for writing: /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr16:58487131-58954316_250028_255090.vcf (single-sample, sorted)
+2025-06-16 17:47:01,991 INFO sniffles.main (1919644): 
+2025-06-16 17:47:01,991 INFO sniffles.main (1919644): Analyzing 10 alignments total...
+2025-06-16 17:47:01,991 INFO sniffles.main (1919644): 
+2025-06-16 17:47:01,991 INFO sniffles.worker (1919644): Starting worker 0
+2025-06-16 17:47:01,993 INFO sniffles.worker (1919644): Starting worker 1
+2025-06-16 17:47:01,994 INFO sniffles.worker (1919644): Starting worker 2
+2025-06-16 17:47:01,995 INFO sniffles.worker (1919644): Starting worker 3
+2025-06-16 17:47:01,996 INFO sniffles.worker (1919644): Dispatched task #0 to worker 0 (2  tasks left)
+2025-06-16 17:47:01,996 INFO sniffles.worker (1919644): Dispatched task #1 to worker 1 (1  tasks left)
+2025-06-16 17:47:01,997 INFO sniffles.worker (1919644): Dispatched task #2 to worker 2 (0  tasks left)
+2025-06-16 17:47:01,997 INFO sniffles.worker (1919644): Worker 3 shutting down...
+2025-06-16 17:47:02,097 INFO sniffles.worker (1919644): Worker 0 got result for task #0
+2025-06-16 17:47:02,097 INFO sniffles.worker (1919644): Worker 1 got result for task #1
+2025-06-16 17:47:02,097 INFO sniffles.worker (1919644): Worker 2 got result for task #2
+2025-06-16 17:47:02,197 INFO sniffles.worker (1919644): Worker 0 shutting down...
+2025-06-16 17:47:02,197 INFO sniffles.worker (1919644): Worker 1 shutting down...
+2025-06-16 17:47:02,197 INFO sniffles.worker (1919644): Worker 2 shutting down...
+2025-06-16 17:47:02,204 INFO sniffles.worker (1919644): Worker 0 done (code 0).
+2025-06-16 17:47:02,204 INFO sniffles.worker (1919644): Worker 1 done (code 0).
+2025-06-16 17:47:02,204 INFO sniffles.worker (1919644): Worker 2 done (code 0).
+2025-06-16 17:47:02,204 INFO sniffles.worker (1919644): Worker 3 done (code 0).
+2025-06-16 17:47:02,204 INFO sniffles.main (1919644): Took 0.21s.
+2025-06-16 17:47:02,204 INFO sniffles.main (1919644): 
+2025-06-16 17:47:02,206 INFO sniffles.main (1919644): Wrote 1 called SVs to /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr16:58487131-58954316_250028_255090.vcf (single-sample, sorted)
+Processed: /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr16:58487131-58954316_250028_255090 (SVs saved to /dlab/NGS/bioinformatics/PCS/DIPGENOMICS/iTT/ETAAVTECD/TES/NVS_pipeline_updated/tes_pipeline_refactor/test/TES_output/05_SVs/SIM_R2/region_chr16:58487131-58954316_250028_255090.vcf)
