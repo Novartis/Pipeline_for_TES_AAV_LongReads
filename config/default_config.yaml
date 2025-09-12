@@ -1,0 +1,93 @@
+# Configuration file for default configurations.
+# These will be overwritten by a run specific config file
+# if specified using the "--configfile" flag.
+
+
+# Reference genome. See Heng Li's blog on which to use:
+# https://lh3.github.io/2017/11/13/which-human-reference-genome-to-use
+ref_genome: "~/genomes/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
+
+# Pre-built minimap2 index (https://lh3.github.io/minimap2/minimap2.html):
+# minimap2 -x map-hifi -d ref_k19_w19.mmi ref.fa
+# The above corresponds to: minimap2 -k19 -w19 -d ref_k19_w19.mmi ref.fa
+# ref_mmi: "~/genomes/GCA_000001405.15_GRCh38_no_alt_analysis_set_k19_w19.mmi"
+ref_mmi: "~/genomes/GCA_000001405.15_GRCh38_no_alt_analysis_set_k15_w5.mmi"
+
+# Outer adapter sequence (default Illumina TruSeq):
+# <outer_adapter_5> <sample_adapter_5> <sequence> <sample_adapter_3> <outer_adapter_3>
+outer_adapter_5: CTTTCCCTACACGACGCTCTTCCGATCT
+outer_adapter_3: AGATCGGAAGAGCACACGTCTGAACTCC
+
+
+# Threads argument for each tool.
+# This allows users to control resources using the snakemake "--jobs" flag. 
+# Snakemake will start as many jobs as possible such that the sum of the threads
+# for these jobs is less than or eqaul to --jobs.
+threads:
+  minimap2: 4
+  sniffles: 10
+
+# Output folder:
+out_folder: "TES_output"
+
+
+# Settings for cutadapt:
+cutadapt_flags:
+  flag1: "--minimum-length 1000"
+
+
+# Filters to insertion identification:
+identify_insertions:
+  # The minimum mapping quality for an alignment to be considered:  
+  min_MAPQ: 50
+  # Minimum length for an alignment to be considered:
+  min_len: 30
+  # Maximum distance between two aligned segments to be merged
+  # into a single insertion:
+  max_merge_distance: 100
+
+
+# Settings for sniffles:
+sniffles_flags:
+  flag1: "--mosaic"
+  flag2: "--mosaic-include-germline"
+  flag3: "--minsvlen 20"
+  flag4: "--minsupport 1"
+  flag5: "--bnd-min-split-length 100"
+  flag6: "--qc-output-all"
+  flag7: "--mapq 0"
+  flag8: "--mosaic-qc-strand False"
+
+
+# minimap2 settings:
+minimap_settings:
+  # https://lh3.github.io/minimap2/minimap2.html
+
+  # The shortest possible aligned segment with minimap2 is mainly controlled by
+  # the -m and -s parameters which control the minimal chaining score and
+  # minimal peak DP alignment score. It is also bound by the k-mer size (-k).
+  # Assuming match score of 1 (-A1) the length of the shortest possible aligned segment
+  # is equal to the largest integer value of -m/-s/-k, when the window size is small (-w2).
+  # Since the k-mer size is typically small <20 nt., we can adjust -m/-s to allow
+  # shorter aligned segments.
+  shortest_segment: 50
+
+  # The first alignment is a filtering step to find reads that contain both
+  # AAV and genomic regions. The alignment is performed in two steps,
+  # first onto the AAV and then onto the genome.
+  # These settings should prefer a single, contiguous
+  # segment of the read aligned to the AAV/genome:
+  flags_filter_aln: "-A1 -B10 -O10,20 -E6,3 -r100 --secondary=no --splice --splice-flank=no --junc-bonus=0 -C0 -un -g50 -G50"
+  # Filter alignments to have a minimum alignment score.
+  flags_filter_aln_filt: "--min_tag 40 AS"
+
+  # The second alignment onto the custom genome (genome+AAV) should find
+  # structural variants. To detect structural variants that includes the AAV
+  # it is important that any aligned segment that is AAV will end in the output.
+  # To facilitate splitting of the alignment into multiple segments,
+  # the "--splice" option with short gap/minimizer spacing (-G50 and -g50) is used.
+  # Also, all splicing site specific heuristics is turned off.
+  flags_custom_genome_aln: "-x map-hifi -r100 --splice --splice-flank=no --junc-bonus=0 -C0 -un -g50 -G50 --secondary=no"
+  # flags_custom_genome_aln: "-x map-hifi --splice -G100 -g100 --splice-flank=no --junc-bonus=0 -C0 -un -N1"
+  # flags_custom_genome_aln: "-x map-hifi -B10 -O10,30 -E2,0 -N100 -p0"
+

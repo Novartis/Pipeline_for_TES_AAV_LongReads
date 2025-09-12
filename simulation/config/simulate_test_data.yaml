@@ -1,0 +1,85 @@
+###########################################
+## YAML config file
+##
+## To run this study, go to the base of the snakemake folder and run:
+## `snakemake all --configfile config/CMV-EGFP-WPRE_config_local.yaml`
+##
+############################################
+
+
+
+
+pipeline_dir: "../simulation"
+
+# Organism reference genome:
+genome_fnam: "test_genome.fa"
+
+# AAV genome:
+AAV_genome_fnam: "pAAV-CMV-EGFP-WPRE.fa"
+
+# Target enrichment panel:
+tes_panel_fnam: "pAAV-CMV-EGFP-WPRE.fa"
+
+
+workdir: "."
+run_name: "simulated_data"
+adapters_fnam: False
+keep_intermediate: False
+threads: 15
+repeats: 2
+
+
+
+
+integration:
+    # How many integration events:
+    events: 3
+
+    # How many allelles of the same integration event are
+    # in the sample? E.g. if a cell with AAV integration has multiplied:
+    expansion: 1
+
+    # Size of AAV integration (drawn from a gamma distribution)
+    # mean, stdev, min, min (optional)
+    size: "1400,1100,25"
+
+
+# Parameters related to target enrichment:
+enrichment:
+    # Percent of reads that pass through
+    # without enrichment:
+    leakage: 10
+
+    # Probability of pulling down a sequence.
+    # This depeneds on a minimum length of complementarity (m)
+    # and a parameter (q). The probability is defined by this function:
+    # f(x) = 1 - 1 / (exp(q*(x-m))) if x>m else 0
+    # q,m
+    enrich_prob: "0.005,40"
+
+    # Let the enrichment probability be additive with respect to multiple
+    # binding sequences, found as supplementary alignments:
+    additive: False
+
+    # Fold amplification, pre-enrichment:
+    amplification: 5
+
+
+
+# Parameters for preparing for read simulation:
+read_sim:
+    # Number of reads simulated from the genome
+    # and submitted to target enrichment, then added
+    # to the integration reads.
+    genome_reads: 4000
+
+    # Simulated reads per event*expansion*amplification.
+    # This parameter can be thought of as a post-enrichment amplification.
+    # The parameter is passed to Badread:
+    coverage: 3
+
+
+
+
+
+

@@ -1,0 +1,74 @@
+###########################################
+## YAML config file
+## Setup for full run on mimic.
+## Default configuration, for example regarding coverage, statistics etc.
+## is stored in "config.yaml" and loaded automatically in the Snakefile.
+##
+## To run this study, go to the base of the snakemake folder and run:
+## `snakemake all --configfile config/CMV-EGFP-WPRE_config_local.yaml`
+##
+############################################
+
+
+
+
+pipeline_dir: "~/bitbucket/davidkr2/development_AAV_integration/read_simulation"
+
+# Organism reference genome:
+genome_fnam: "/Users/davidkr2/genomes/GRCh38.primary_assembly.genome.chrOnly.fa"
+
+# AAV genome:
+AAV_genome_fnam: "~/bitbucket/davidkr2/development_AAV_integration/snapgene_files/CMV-EGFP-WPRE.fa"
+
+# Target enrichment panel:
+tes_panel_fnam: "~/bitbucket/davidkr2/development_AAV_integration/snapgene_files/CMV-EGFP-WPRE.fa"
+
+
+workdir: "/Users/davidkr2/bitbucket/davidkr2/development_AAV_integration/read_simulation/CMV-EGFP-WPRE"
+run_name: "CMV-EGFP-WPRE"
+adapters_fnam: False
+keep_intermediate: False
+threads: 15
+repeats: 2
+
+
+
+
+integration:
+    # How many integration events:
+    events: 10
+
+    # How many allelles of the same integration event are
+    # in the sample? E.g. if a cell with AAV integration has multiplied:
+    expansion: 1
+
+    # Size of AAV integration (drawn from a gamma distribution)
+    # mean, stdev, min, min (optional)
+    size: "1400,1100,25"
+
+
+# Parameters related to target enrichment:
+enrichment:
+    # Probability of pulling down a sequence.
+    # This depeneds on a minimum length of complementarity (m)
+    # and a parameter (q). The probability is defined by this function:
+    # f(x) = 1 - 1 / (exp(q*(x-m))) if x>m else 0
+    # q,m
+    enrich_prob: "0.005,40"
+
+    # Let the enrichment probability be additive with respect to multiple
+    # binding sequences, found as supplementary alignments:
+    additive: False
+
+
+
+# Parameters for preparing for read simulation:
+read_sim:
+    # Number of reads simulated from the genome
+    # and submitted to target enrichment, then added
+    # to the integration reads.
+    genome_reads: 1000000
+
+
+
+
