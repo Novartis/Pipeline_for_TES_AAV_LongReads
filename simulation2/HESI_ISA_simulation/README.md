@@ -14,7 +14,37 @@ This simulation is setup to test four variables affecting AAV integration site d
 This results in 48 unique simulation conditions (2 genomes × 3 AAVs × 2 site biases × 4 clonality levels) with 3 technical replicates each, totaling 144 simulation runs.
 
 
+## Super Quick Start
 
+Assuming on UGE cluster, otherwise edit `run_all_simulations_qsub.sh`.
+```bash
+# Fix permissions if not already set:
+chmod -R 755 *.sh
+chmod -R 755 *.py
+chmod -R 755 */*.sh
+chmod -R 755 */*.py
+
+# Download and generate genomes:
+cd genomes
+./prepare_genomes.sh > prepare_genomes.log 2>&1
+cd ..
+
+# Submit jobs:
+./run_all_simulations_qsub.sh
+```
+
+Wait until jobs are finnished:
+```bash
+python add_md5sum.py \
+  --run_table_in all_simulations_runtable.tsv \
+  --md5_colname fastq_md5sum \
+  --verbose
+```
+
+Compare results to Novartis':
+```bash
+diff all_simulations_runtable_NVS.tsv all_simulations_runtable.tsv
+```
 
 
 ## External Software
