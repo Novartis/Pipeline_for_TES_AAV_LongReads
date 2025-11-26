@@ -56,6 +56,7 @@ python setup_simulations.py \
 
 # Prepare to start simulation runs:
 mkdir -p logs
+mkdir -p simulation_output
 shopt -s nullglob
 configs=($CONFIG_GLOB)
 if [ ${#configs[@]} -eq 0 ]; then
