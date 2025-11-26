@@ -143,7 +143,8 @@ Run all 48 simulations with 3 replicates each (144 total runs):
 ```
 
 **Output:** `simulation_output/HESI_ISA_simulation_*`  
-**Logs:** `logs/HESI_ISA_simulation_*.log`
+**Logs:** `logs/HESI_ISA_simulation_*.log`  
+**Run Table** `all_simulations_runtable.tsv`
 
 ### Configuration
 
@@ -247,5 +248,5 @@ python add_md5sum.py \
 - Leaves cells empty if FASTQ file doesn't exist
 
 The updated run table can be used to verify data integrity after transfer.
-
+The `all_simulations_runtable_NVS.tsv` contains the simulation run table and MD5 checksums for the full simulation run on Novartis' servers.
 
