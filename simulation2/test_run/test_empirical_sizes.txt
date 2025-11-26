@@ -1,0 +1,46 @@
+# Test empirical AAV fragment sizes (in base pairs)
+# One integer per line
+# This file simulates empirical fragment size distribution
+500
+750
+800
+850
+900
+950
+1000
+1050
+1100
+1150
+1200
+1250
+1300
+1350
+1400
+1450
+1500
+1550
+1600
+1650
+1700
+800
+850
+900
+950
+1000
+1050
+1100
+1150
+1200
+1250
+1300
+500
+600
+700
+800
+900
+1000
+1100
+1200
+1300
+1400
+1500

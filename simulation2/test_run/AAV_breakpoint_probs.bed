@@ -1,0 +1,12 @@
+# BED file with breakpoint probabilities for CMV-EGFP-WPRE AAV sequence
+# Format: chrom\tstart\tend\tprobability
+# Baseline probability for undefined regions: 1.0
+# Total AAV length: 3342 bp
+#
+# Region definitions:
+# 0-500: CMV promoter region - low breakpoint probability (coldspot)
+# 1000-1800: EGFP coding sequence - high breakpoint probability (hotspot)
+# 2500-3000: WPRE region - medium-high breakpoint probability
+CMV-EGFP-WPRE	0	50	0.3
+CMV-EGFP-WPRE	100	180	3.0
+CMV-EGFP-WPRE	250	300	2.0

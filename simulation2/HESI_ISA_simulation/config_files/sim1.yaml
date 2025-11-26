@@ -1,0 +1,73 @@
+###########################################
+# YAML config file for simulaion 1 
+# Genome: GRCh38.fa
+# Site bias: uniform
+# AAV: CMV-EGFP-WPRE.fa
+# Clonality: 900/100
+# Replicates: 3
+###########################################
+
+
+
+default_configfile: "config_files/default_config.yaml"
+
+# Organism reference genome:
+genome_fnam: "../genomes/GRCh38.fa"
+
+# Specify run name:
+run_name: "testrun1"
+
+repeats: 1
+
+# AAV genome:
+AAV_genome_fnam: "../AAVs/pFZ-CBI-CAG-FXNco3/pFZ-CBI-CAG-FXNco3.fa"
+
+# Target enrichment panel:
+tes_panel_fnam: "../AAVs/pFZ-CBI-CAG-FXNco3/pFZ-CBI-CAG-FXNco3_tes_panel.fa"
+
+
+
+# Parameters related to AAV integration:
+integration:
+    # How many integration events:
+    events: 1000
+
+    # How many allelles of the same integration event are
+    # in the sample? E.g. if a cell with AAV integration has multiplied:
+    expansion: 1
+
+    # AAV fragment generation:
+    aav:
+        # Method and parameters for AAV fragment generation.
+        # Format: method_name,param1,param2,...
+        #   empirical_kde_biased,min,max,tolerance,max_iter - KDE-based with biased breakpoints
+        #     Example: "empirical_kde_biased,25,5000,50,10000"
+        #     Requires: Both empirical_sizes and prob_file parameters (see below)
+        #     Process: 1) Sample target length from KDE fitted to empirical size distribution
+        #              2) Sample two breakpoints using probability weights from prob_file
+        #              3) Check if fragment length is within tolerance of target
+        #              4) Repeat until successful or resample length
+        method: "empirical_kde_biased,40,5000,50,10000"
+
+        # BED file with breakpoint probabilities for gamma_biased_stick method
+        # Format: sequence_name\tstart\tend\tprobability
+        #   - Higher probability values create breakpoint hotspots
+        #   - Undefined regions have baseline probability of 1.0
+        #   - Example: CMV-EGFP-WPRE\t1000\t1800\t3.0 (3x higher in EGFP region)
+        prob_file: "../AAVs/pFZ-CBI-CAG-FXNco3/pFZ-CBI-CAG-FXNco3_breakend_prob.bed"
+        
+        # Optional file with empirical fragment sizes for empirical_kde method
+        # Format: one integer per line representing fragment size in base pairs
+        # Leave empty ("") for gamma_stick or gamma_biased_stick methods
+        empirical_sizes: "../AAVs/pFZ-CBI-CAG-FXNco3/pFZ-CBI-CAG-FXNco3_ISlen.txt"
+
+    # Optional: BED file with sampling probabilities for integration sites
+    # Format: chrom\tstart\tend\tprobability
+    # Probabilities are relative to baseline (1.0 for unlisted regions)
+    # Example: a value of 2.0 means 2x more likely than baseline
+    # Leave empty or comment out for uniform sampling
+    sampling_prob_bed: "../integration_site_bias/liver_integration_bias.bed"
+
+
+read_sim:
+    genome_reads: 10000000

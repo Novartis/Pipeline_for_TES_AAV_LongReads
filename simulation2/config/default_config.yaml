@@ -1,0 +1,173 @@
+###########################################
+# Default YAML config file for snakemake.
+# This file is loaded automatically at the top of the Snakefile.
+#
+# Additional configuration, can be specified to overwrite
+# any the of the default settings like this:
+# `snakemake all --configfile config/<run specific>.yaml`
+#
+###########################################
+
+
+# Random seed for reproducibility.
+# Setting this to a specific integer makes the simulation deterministic
+# and reproducible across different runs and machines.
+# Set to null for non-deterministic behavior (default).
+seed: null
+
+
+# Parameters related to AAV integration:
+integration:
+    # How many integration events:
+    events: 10
+
+    # How many alleles of the same integration event are
+    # in the sample? E.g. if a cell with AAV integration has multiplied.
+    # Can be specified as:
+    #   - Single integer: applies to all events (e.g., 2)
+    #   - List of 1 integer: applies to all events (e.g., [2])
+    #   - List of 2 integers: first applies to event 1, second to all remaining events
+    #     (e.g., [5, 2] means event 1 has expansion 5, events 2+ have expansion 2)
+    expansion: 2
+
+    # AAV fragment generation:
+    aav:
+        # Method and parameters for AAV fragment generation.
+        # Format: method_name,param1,param2,...
+        # Currently supported methods:
+        #   gamma_stick,mean,stdev,min - Gamma-distributed length with stick-breaking
+        #     Example: "gamma_stick,1000,500,25" (mean=1000bp, stdev=500bp, min=25bp)
+        #     Process: 1) Sample length from gamma distribution
+        #              2) Use stick-breaking to randomly extract fragment of that length
+        #
+        #   gamma_biased_stick,mean,stdev,min,tolerance,max_iter - Biased breakpoint sampling
+        #     Example: "gamma_biased_stick,1000,500,25,50,10000"
+        #     Requires: prob_file parameter must be set (see below)
+        #     Process: 1) Sample target length from gamma distribution
+        #              2) Sample two breakpoints using biased sampling from BED file
+        #              3) Check if resulting fragment length is within tolerance of target
+        #              4) Repeat steps 2-3 up to max_iter times
+        #              5) If max_iter reached, resample new length (step 1)
+        #              6) Raises exception after 100 length resamples (parameter mismatch)
+        #
+        #   empirical_kde,min,max,tolerance,max_iter - KDE-based sampling from empirical data
+        #     Example: "empirical_kde,25,5000,50,10000"
+        #     Requires: empirical_sizes parameter must be set (see below)
+        #     Process: 1) Sample target length from KDE fitted to empirical size distribution
+        #              2) Enforce min/max constraints
+        #              3) Use stick-breaking to randomly extract fragment of that length
+        method: "gamma_stick,1000,500,25"
+        
+        # Optional BED file with breakpoint probabilities for gamma_biased_stick method
+        # Format: sequence_name\tstart\tend\tprobability
+        #   - Higher probability values create breakpoint hotspots
+        #   - Undefined regions have baseline probability of 1.0
+        #   - Example: CMV-EGFP-WPRE\t1000\t1800\t3.0 (3x higher in EGFP region)
+        # Leave empty ("") for gamma_stick method or uniform sampling
+        prob_file: ""
+
+        # Optional file with empirical fragment sizes for empirical_kde method
+        # Format: one integer per line representing fragment size in base pairs
+        # Lines starting with '#' are ignored
+        # Leave empty ("") for gamma_stick or gamma_biased_stick methods
+        empirical_sizes: ""
+
+    # Optional: BED file with sampling probabilities for integration sites
+    # Format: chrom\tstart\tend\tprobability
+    # Probabilities are relative to baseline (1.0 for unlisted regions)
+    # Example: a value of 2.0 means 2x more likely than baseline
+    # Leave empty or comment out for uniform sampling
+    sampling_prob_bed: ""
+
+    # Genome deletion, max size and distribution:
+    deletion:
+        max_size: 1000
+        # The size_dist is passed directly to the
+        # function for drawing from a deletion lengths.
+        # A three piece uniform distribution is implemented
+        # by default, with the following format:
+        # function name, max range of first uniform, max of second uniform,
+        # max of third uniform, prob first, prob second, prob third:
+        size_dist: "triuniform,0,100,1000,0.5,0.47,0.03"
+
+    # Junction insertion sequence distribution.
+    # The string is passed directly to the function for
+    # drawing insertions. A two piece uniform distribution
+    # is implemented by default, with the following format:
+    # function name, max range of first uniform, max of second uniform,
+    # prob first, prob second. This insertion is applied at both
+    # junctions of the integration.
+    insertion: "dualside_diuniform,0,500,0.5,0.5"
+
+    # Probability of translocation events occurring at integration:
+    p_translocation: 0.3
+
+
+# Parameters for preparing for read simulation:
+read_sim:
+    # length = mean, stdev on a gamma distribution, with an upper bound:
+    # https://www.desmos.com/calculator/z2a3yqssie
+    # mean,stdev,max
+    length: "9000,3000,30000"
+
+    # Simulated reads per event*expansion*amplification.
+    # This parameter can be thought of as a post-enrichment amplification.
+    # The parameter is passed to Badread:
+    coverage: 10
+
+    # Number of reads simulated from the genome
+    # and submitted to target enrichment, then added
+    # to the integration reads.
+    # For 30x coverage: 30*3e9 / 9e3 = 1e7
+    genome_reads: 10000000
+
+    # Number of episomal AAV reads to simulate and
+    # submit to target enrichment, then add to the final read set:
+    episomal_reads: 2000
+
+
+
+# Parameters related to target enrichment:
+enrichment:
+    # Percent of reads that pass through
+    # without enrichment:
+    leakage: 0.01
+
+    # Fold amplification, pre-enrichment:
+    amplification: 10
+
+    # Probability of pulling down a sequence.
+    # This is defined by a model name implemented in
+    # the "pulldown_probability.py" script.
+    # An empirical model for Twist hybrid-capture is implemented
+    # as the "twist" model:
+    enrich_model: "twist"
+
+    # Minimum length of contiguous aligned bases in fragment
+    # to be considered for pulldown:
+    min_len: 30
+
+
+
+# Default settings passed on to badreads:
+# https://github.com/rrwick/Badread?tab=readme-ov-file
+badread:
+    identity: "30,3"
+    error_model: "pacbio2021"
+    qscore_model: "pacbio2021"
+    start_adapter: "100,100"
+    end_adapter: "100,100"
+    start_adapter_seq: 0
+    end_adapter_seq: 0
+    chimeras: 1
+    glitches: "3000,1,1"
+
+    # The junk and random reads should be set to 0
+    # to avoid generating these with the large length distribution:
+    junk_reads: 0
+    random_reads: 0
+
+
+
+
+

@@ -1,0 +1,39 @@
+Variable	Full Name	Description	Default Value	Type	Category
+genome_fnam	Genome Reference File	Path to the organism reference genome in FASTA format	(required)	file path	Input Files
+AAV_genome_fnam	AAV Genome File	Path to the AAV genome sequence in FASTA format	(required)	file path	Input Files
+tes_panel_fnam	Target Enrichment Panel File	Path to the target enrichment panel sequences in FASTA format	(required)	file path	Input Files
+workdir	Working Directory	Directory where simulation outputs will be written	(required)	directory path	General
+pipeline_dir	Pipeline Directory	Path to the simulation pipeline directory	(auto-detected)	directory path	General
+run_name	Run Name	Unique identifier for the simulation run	sim_run-<uuid>	string	General
+seed	Random Seed	Random seed for reproducible simulations (null for non-deterministic)	null	integer	General
+keep_intermediate	Keep Intermediate Files	Whether to retain intermediate loci files after simulation	FALSE	boolean	General
+threads	Thread Count	Number of CPU threads to use for parallel processing	15	integer	General
+repeats	Repeat Count	Number of independent simulation replicates to generate	2	integer	General
+integration.events	Integration Events	Number of AAV integration events to simulate per replicate	10	integer	Integration
+integration.expansion	Allele Expansion	Number of alleles per integration event (cellular replication factor)	2	integer	Integration
+integration.aav.method	AAV Fragment Method	Method and parameters for AAV fragment generation	"gamma_stick,1000,500,25"	string	Integration
+integration.aav.prob_file	AAV Breakpoint Probability File	BED file specifying breakpoint probability regions (for gamma_biased_stick)		file path	Integration
+integration.sampling_prob_bed	Integration Site Probability File	BED file specifying genomic integration site probabilities		file path	Integration
+integration.deletion.max_size	Deletion Max Size	Maximum size of genomic deletions at integration junctions	1000	integer	Integration
+integration.deletion.size_dist	Deletion Size Distribution	Distribution parameters for deletion sizes at junctions	"triuniform,0,100,1000,0.5,0.47,0.03"	string	Integration
+integration.insertion	Junction Insertion Distribution	Distribution parameters for insertion sequences at junctions	"dualside_diuniform,0,500,0.5,0.5"	string	Integration
+integration.p_translocation	Translocation Probability	Probability of translocation events occurring at integration sites	0.3	float	Integration
+read_sim.length	Read Length Distribution	"Comma-separated: mean,stdev,max for gamma-distributed fragment lengths"	"9,000,300,030,000"	string	Read Simulation
+read_sim.coverage	Sequencing Coverage	Simulated read coverage per integration event (post-enrichment amplification)	10	integer	Read Simulation
+read_sim.genome_reads	Genome Background Reads	Number of non-integration genomic reads to simulate and enrich	10000000	integer	Read Simulation
+read_sim.episomal_reads	Episomal AAV Reads	Number of episomal (circular) AAV DNA fragments to simulate and enrich	10000	integer	Read Simulation
+enrichment.leakage	Enrichment Leakage	Fraction of reads passing through without enrichment (0-1)	0.01	float	Enrichment
+enrichment.amplification	Pre-Enrichment Amplification	Fold amplification factor applied to integration loci before enrichment	10	integer	Enrichment
+enrichment.enrich_model	Enrichment Model	Name of enrichment probability model (e.g. twist for Twist Bioscience)	twist	string	Enrichment
+enrichment.min_len	Minimum Complementarity Length	Minimum contiguous alignment length required for enrichment consideration	30	integer	Enrichment
+badread.identity	Read Identity	"Mean and stdev for simulated read identity (mean,stdev)"	"30,3"	string	Read Quality
+badread.error_model	Error Model	Sequencing error model for read simulation	pacbio2021	string	Read Quality
+badread.qscore_model	Quality Score Model	Quality score model for simulated reads	pacbio2021	string	Read Quality
+badread.start_adapter	Start Adapter Identity	Identity parameters for start adapter sequences	"100,100"	string	Read Quality
+badread.end_adapter	End Adapter Identity	Identity parameters for end adapter sequences	"100,100"	string	Read Quality
+badread.start_adapter_seq	Start Adapter Sequence	Custom start adapter sequence (0 for default)	0	integer/string	Read Quality
+badread.end_adapter_seq	End Adapter Sequence	Custom end adapter sequence (0 for default)	0	integer/string	Read Quality
+badread.chimeras	Chimeric Read Rate	Percentage of chimeric reads to generate	1	float	Read Quality
+badread.glitches	Glitch Parameters	"Glitch rate parameters: rate,size,skip"	"3000,1,1"	string	Read Quality
+badread.junk_reads	Junk Read Percentage	Percentage of junk reads (should be 0 for long fragments)	0	float	Read Quality
+badread.random_reads	Random Read Percentage	Percentage of random reads (should be 0 for long fragments)	0	float	Read Quality

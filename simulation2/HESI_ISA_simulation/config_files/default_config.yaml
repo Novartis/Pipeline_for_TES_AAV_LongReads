@@ -1,0 +1,127 @@
+#################################################
+# Default YAML config file for HESI simulations #
+#################################################
+
+
+# Directory to store simulation output:
+workdir: "simulation_output"
+
+# Whether to keep intermediate files:
+keep_intermediate: False
+
+# Number of times to repeat the entire simulation:
+repeats: 3
+
+# Random seed for reproducibility.
+# Setting this to a specific integer makes the simulation deterministic
+# and reproducible across different runs and machines.
+# Set to null for non-deterministic behavior (default).
+seed: 42
+
+
+# Parameters related to AAV integration:
+integration:
+    aav:
+        # Method and parameters for AAV fragment generation:
+        method: "empirical_kde_biased,40,5000,50,10000"
+
+    # Genome deletion, max size and distribution:
+    deletion:
+        max_size: 100000
+        # The size_dist is passed directly to the
+        # function for drawing from a deletion lengths.
+        # A three piece uniform distribution is implemented
+        # by default, with the following format:
+        # function name, max range of first uniform, max of second uniform,
+        # max of third uniform, prob first, prob second, prob third:
+        size_dist: "triuniform,0,100,100000,0.9338,0.0598,0.0064"
+
+    # Junction insertion sequence distribution.
+    # The string is passed directly to the function for
+    # drawing insertions. A two piece distribution
+    # is implemented with first a uniform distribution
+    # and then a power-law distribution. The format is:
+    # function name, max range of first uniform, max of power-law,
+    # power function baseline (a), power function exponent (b),
+    # prob first, prob second. This insertion is applied at both
+    # junctions of the integration.
+    insertion: "uniform_power,0,10000,28.4,-0.7488,0.6625,0.3375"
+
+    # Probability of translocation events occurring at integration:
+    p_translocation: 0.025
+
+
+# Parameters for preparing for read simulation:
+read_sim:
+    # length = mean, stdev on a gamma distribution, with an upper bound:
+    # https://www.desmos.com/calculator/z2a3yqssie
+    # mean,stdev,max
+    # length: "6000,1500,16000"
+    length: "9000,3000,20000"
+
+    # Simulated reads per event*expansion*amplification.
+    # This parameter can be thought of as the coverage.
+    # The parameter is passed to Badread:
+    coverage: 5
+
+    # Number of reads simulated from the genome
+    # and submitted to target enrichment, then added
+    # to the integration reads.
+    # For 30x coverage: 30*3e9 / 9e3 = 1e7
+    genome_reads: 10000000
+
+    # Number of episomal AAV reads to simulate and
+    # submit to target enrichment, then add to the final read set:
+    episomal_reads: 2000
+
+
+
+# Parameters related to target enrichment:
+enrichment:
+    # Percent of reads that pass through
+    # without enrichment:
+    leakage: 0.01
+
+    # Fold amplification, pre-enrichment.
+    # This can be thought of as a pre-capture PCR amplification.
+    # Typical, 7-8 PCR cycles are used i.e. 64-128 fold
+    # amplification of barcoded DNA.
+    # However, one must take into account that material is lost
+    # during DNA fragmentation, bead purification, end-repair,
+    # adapter ligation and dilution of the reaction post PCR.
+    # Thus, a lower effective amplification is used here.
+    amplification: 10
+
+    # Probability of pulling down a sequence.
+    # This is defined by a model name implemented in
+    # the "pulldown_probability.py" script.
+    # An empirical model for Twist hybrid-capture is implemented
+    # as the "twist" model, this is very stringent, thus a relaxed
+    # version is used here:
+    enrich_model: "twist_relaxed"
+
+    # Minimum length of contiguous aligned bases in fragment
+    # to be considered for pulldown:
+    min_len: 20
+
+
+
+# Default settings passed on to badreads:
+# https://github.com/rrwick/Badread?tab=readme-ov-file
+badread:
+    identity: "30,3"
+    error_model: "pacbio2021"
+    qscore_model: "pacbio2021"
+    start_adapter: "100,100"
+    end_adapter: "100,100"
+    start_adapter_seq: 0
+    end_adapter_seq: 0
+    chimeras: 1
+    glitches: "3000,1,1"
+
+    # The junk and random reads should be set to 0
+    # to avoid generating these with the large length distribution:
+    junk_reads: 0
+    random_reads: 0
+
+

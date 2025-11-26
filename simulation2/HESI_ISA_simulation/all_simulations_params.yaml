@@ -1,0 +1,92 @@
+#################################################
+# YAML config  for varibles used in simulations #
+#################################################
+
+# Simulation basename, each simulation will be named
+# with this prefix plus and integer index:
+run_basename: "HESI_ISA_simulation"
+
+
+### Variable 1 ###
+# Two different human genomes (from genome in a bottle):
+genomes: [
+    "HG001",
+    "HG002"
+]
+
+genome_fnam:
+  HG001: "../genomes/HG001_GRCh38.hap1.fa"
+  HG002: "../genomes/HG002_GRCh38.hap1.fa"
+
+
+
+### Variable 2 ###
+# Three different AAV plasmids: two with human transgenes, one GFP:
+AAVs: [
+    "CMV-EGFP-WPRE",
+    "rAAVrh74.MHCK7.microdystrophin",
+    "pFZ-CBI-CAG-FXNco3"
+]
+
+AAV_genome_fnam:
+  CMV-EGFP-WPRE: "../AAVs/CMV-EGFP-WPRE/CMV-EGFP-WPRE.fa"
+  rAAVrh74.MHCK7.microdystrophin: "../AAVs/rAAVrh74.MHCK7.microdystrophin/rAAVrh74.MHCK7.microdystrophin.fa"
+  pFZ-CBI-CAG-FXNco3: "../AAVs/pFZ-CBI-CAG-FXNco3/pFZ-CBI-CAG-FXNco3.fa"
+
+tes_panel_fnam:
+  CMV-EGFP-WPRE: "../AAVs/CMV-EGFP-WPRE/CMV-EGFP-WPRE_tes_panel.fa"
+  rAAVrh74.MHCK7.microdystrophin: "../AAVs/rAAVrh74.MHCK7.microdystrophin/rAAVrh74.MHCK7.microdystrophin_tes_panel.fa"
+  pFZ-CBI-CAG-FXNco3: "../AAVs/pFZ-CBI-CAG-FXNco3/pFZ-CBI-CAG-FXNco3_tes_panel.fa"
+
+integration:
+  aav:
+    prob_file:
+      CMV-EGFP-WPRE: "../AAVs/CMV-EGFP-WPRE/CMV-EGFP-WPRE_breakend_prob.bed"
+      rAAVrh74.MHCK7.microdystrophin: "../AAVs/rAAVrh74.MHCK7.microdystrophin/rAAVrh74.MHCK7.microdystrophin_breakend_prob.bed"
+      pFZ-CBI-CAG-FXNco3: "../AAVs/pFZ-CBI-CAG-FXNco3/pFZ-CBI-CAG-FXNco3_breakend_prob.bed"
+
+    empirical_sizes:
+      CMV-EGFP-WPRE: "../AAVs/CMV-EGFP-WPRE/CMV-EGFP-WPRE_ISlen.txt"
+      rAAVrh74.MHCK7.microdystrophin: "../AAVs/rAAVrh74.MHCK7.microdystrophin/rAAVrh74.MHCK7.microdystrophin_ISlen.txt"
+      pFZ-CBI-CAG-FXNco3: "../AAVs/pFZ-CBI-CAG-FXNco3/pFZ-CBI-CAG-FXNco3_ISlen.txt"
+
+  sampling_prob_bed:
+    uniform: ""
+    Liver: "../integration_site_bias/liver_integration_bias.bed"
+
+  events:
+    "900/100": 101
+    "500/500": 501
+    "100/900": 901
+    "1000": 1000
+
+  expansion:
+    "900/100": [900, 1]
+    "500/500": [500, 1]
+    "100/900": [100, 1]
+    "1000": 1
+
+
+### Variable 3 ###
+# Two different site bias settings: uniform over the genome, liver transcriptionally active sites
+IS_site_bias: [
+    "uniform",
+    "Liver"
+]
+
+
+
+### Variable 4 ###
+# Within a sample multiple levels of clonality:
+clonality: [
+    "900/100",
+    "500/500",
+    "100/900",
+    "1000"
+]
+
+
+
+# The total simulations will be all combinations of the above variables:
+# 2x3x2x4 = 48 simulations
+
