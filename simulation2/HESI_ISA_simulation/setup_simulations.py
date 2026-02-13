@@ -86,7 +86,7 @@ def parse_args():
     parser.add_argument(
         "--seed_space",
         type=int,
-        help="Spacing between seeds for each simulation run. If specified, run 1 gets seed=0, run 2 gets seed=seed_space, etc."
+        help="Spacing between seeds for each simulation run. If specified, run 1 gets seed=seed_space*1, run 2 gets seed=seed_space*2, etc."
     )
     return parser.parse_args()
 
@@ -278,7 +278,7 @@ def main():
             
             # Add seed if seed_space is specified
             if args.seed_space is not None:
-                config['seed'] = (idx - 1) * args.seed_space
+                config['seed'] = idx * args.seed_space
         except FileNotFoundError as e:
             print(f"\nError in combination {idx}: {e}")
             print(f"Skipping: {combo}")
