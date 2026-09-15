@@ -1,0 +1,598 @@
+---
+title: "Common Integration Site (CIS) Analysis"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: true
+params:
+  is_dir: "05_insertions_repeatmask"
+  connect_distance: 50000
+  fdr_threshold: 0.05
+---
+
+<!--
+Copyright 2025 Novartis Institutes for BioMedical Research Inc.
+
+Licensed under the MIT License (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+https://www.mit.edu/~amini/LICENSE.md
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+# Overview
+
+This notebook identifies **Common Integration Sites (CIS)** — genomic regions
+with statistically recurrent AAV integrations — using a position-based sliding
+window approach with a data-driven minimum order threshold.
+
+CIS are computed separately for each treatment group and ranked by statistical
+significance using a Poisson test with per-chromosome normalization.
+
+**Requirements:**
+
+- R packages: `tidyverse`, `GenomicRanges`, `kableExtra`, `gt23`, `lisat`
+- Input: `*_integration_sites.tsv` files from the TES-AAV pipeline
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, cache = FALSE, warning = FALSE, message = FALSE,
+  fig.width = 10, fig.height = 7
+)
+
+library(tidyverse)
+library(GenomicRanges)
+library(kableExtra)
+library(gt23)
+library(lisat)
+```
+
+# Data Loading & Preprocessing
+
+```{r load-data}
+# Discover integration site TSV files
+is_files <- list.files(
+  params$is_dir,
+  pattern = "_integration_sites\\.tsv$",
+  full.names = TRUE
+)
+stopifnot("No integration_sites.tsv files found" = length(is_files) > 0)
+
+# Read and combine
+is_data_all <- map_dfr(is_files, function(f) {
+  df <- read_tsv(f, show_col_types = FALSE)
+  df$sample <- sub("_integration_sites\\.tsv$", "", basename(f))
+  df
+})
+
+cat(sprintf("Loaded %d integration sites across %d samples\n",
+            nrow(is_data_all), n_distinct(is_data_all$sample)))
+```
+
+```{r filter-confidence}
+# Exclude low-confidence sites (artifacts flagged by annotate_is_confidence.py)
+is_data <- is_data_all %>%
+  filter(confidence != "low" | is.na(confidence))
+
+cat(sprintf("Retained %d / %d sites (excluded %d low-confidence artifacts)\n",
+            nrow(is_data), nrow(is_data_all), nrow(is_data_all) - nrow(is_data)))
+```
+
+```{r sample-metadata}
+# Parse sample metadata from file names
+# Adapt this block to your sample naming convention.
+# Expected pattern: {condition}_R1_A1_{donor}
+is_data <- is_data %>%
+  mutate(
+    donor = str_extract(sample, "\\d{3}$"),
+    condition = str_remove(sample, "_R1_A1_\\d{3}$"),
+    treatment = case_when(
+      str_detect(condition, "^unt")      ~ "AAV_only",
+      str_detect(condition, "^ems2and3") ~ "EMS1and2_3weeks",
+      str_detect(condition, "^ems2")     ~ "EMS_2weeks",
+      str_detect(condition, "^ems3")     ~ "EMS_3weeks",
+      TRUE ~ condition
+    )
+  )
+```
+
+# Gene Annotation (gt23)
+
+Annotate integration sites with nearest gene, oncogene, and distance using
+the `gt23` package.
+
+```{r annotate-genes}
+# Build GRanges per sample from cluster coordinates
+is_for_annot <- is_data %>%
+  mutate(
+    first_chr = str_extract(cluster_chr, "^[^;]+"),
+    first_chr = str_trim(first_chr),
+    annot_strand = case_when(
+      orientation == "fwd" ~ "+",
+      orientation == "rev" ~ "-",
+      TRUE ~ "*"
+    )
+  ) %>%
+  filter(!is.na(first_chr), !is.na(cluster_start), !is.na(cluster_end))
+
+gr_list <- split(is_for_annot, is_for_annot$sample) %>%
+  lapply(function(df) {
+    GRanges(
+      seqnames = df$first_chr,
+      ranges   = IRanges(start = df$cluster_start, end = df$cluster_end),
+      strand   = df$annot_strand
+    )
+  })
+
+# Annotate each sample
+annotated_list <- list()
+for (nm in names(gr_list)) {
+  gr <- gr_list[[nm]]
+  mcols(gr)$patient   <- "Sample1"
+  mcols(gr)$refGenome <- "hg38"
+  gr <- gt23::annotateIntSites(gr)
+  annotated_list[[nm]] <- as.data.frame(gr)
+}
+annotated_data <- bind_rows(annotated_list, .id = "sample")
+
+# Transfer annotations back
+is_for_annot$nearestFeature     <- annotated_data$nearestFeature
+is_for_annot$nearestFeatureDist <- annotated_data$nearestFeatureDist
+is_for_annot$inFeature          <- annotated_data$inFeature
+is_for_annot$nearestOncoFeature     <- annotated_data$nearestOncoFeature
+is_for_annot$nearestOncoFeatureDist <- as.numeric(annotated_data$nearestOncoFeatureDist)
+
+is_data <- is_data %>%
+  left_join(
+    is_for_annot %>% select(sample, site_id, nearestFeature, nearestFeatureDist,
+                            inFeature, nearestOncoFeature, nearestOncoFeatureDist),
+    by = c("sample", "site_id")
+  )
+
+cat(sprintf("Annotated %d / %d integration sites\n",
+            sum(!is.na(is_data$nearestFeature)), nrow(is_data)))
+```
+
+# Common Integration Sites (CIS)
+
+## Method
+
+The minimum CIS order **K\*** is the smallest number of ISs in a window of size
+`2 × connect_distance` such that fewer than 1 cluster of that size is expected
+by chance anywhere in the genome (summing across all chromosomes, each with
+its own size and IS count). This threshold is computed separately for each
+treatment group.
+
+A CIS region is called significant if it meets:
+
+1. **Minimum order**: ≥K\* ISs in the region (data-driven, not arbitrary)
+2. **Statistical significance**: FDR-adjusted p-value < `r params$fdr_threshold`
+   (Poisson test with per-chromosome normalization)
+
+Additional confidence flags (not used for filtering):
+
+- **Multi-sample support**: ISs from ≥2 independent samples
+- **Multi-donor support** (strongest evidence): ISs from both donors
+
+```{r cis-prepare-data}
+# Prepare lisat-format data
+# Use upstream breakpoint coordinates; fall back to downstream if upstream is NA
+IS_raw_lisat <- is_data %>%
+  mutate(
+    bp_chr = coalesce(chr_bp_upstream, chr_bp_downstream),
+    bp_pos = coalesce(pos_bp_upstream, pos_bp_downstream)
+  ) %>%
+  filter(!is.na(bp_chr), !is.na(bp_pos)) %>%
+  transmute(
+    Sample = sample,
+    SCount = count,
+    Chr = sub("^chr", "", bp_chr),
+    Locus = as.integer(bp_pos),
+    nearest_gene_name = nearestFeature,
+    treatment_group = treatment,
+    donor = donor
+  ) %>%
+  filter(Chr %in% c(as.character(1:22), "X", "Y", "M")) %>%
+  filter(!is.na(nearest_gene_name))
+
+# Split into treatment groups
+IS_aav_only <- IS_raw_lisat %>% filter(treatment_group == "AAV_only")
+IS_ems      <- IS_raw_lisat %>% filter(treatment_group != "AAV_only")
+
+cat(sprintf("AAV-only: %d ISs across %d samples\n",
+            nrow(IS_aav_only), n_distinct(IS_aav_only$Sample)))
+cat(sprintf("EMS-treated: %d ISs across %d samples\n",
+            nrow(IS_ems), n_distinct(IS_ems$Sample)))
+```
+
+```{r cis-functions}
+# Chromosome lengths (hg38)
+chr_sizes_hg38 <- c(
+  "1" = 248956422, "2" = 242193529, "3" = 198295559, "4" = 190214555,
+  "5" = 181538259, "6" = 170805979, "7" = 159345973, "8" = 145138636,
+  "9" = 138394717, "10" = 133797422, "11" = 135086622, "12" = 133275309,
+  "13" = 114364328, "14" = 107043718, "15" = 101991189, "16" = 90338345,
+  "17" = 83257441, "18" = 80373285, "19" = 58617616, "20" = 64444167,
+  "21" = 46709983, "22" = 50818468, "X" = 156040895, "Y" = 57227415,
+  "M" = 16569
+)
+
+# Compute data-driven minimum CIS order
+#
+# For each candidate order K (2, 3, ...), compute expected number of K-order
+# clusters genome-wide under uniform random integration:
+#   E[CIS_K] = sum_chr (L_i / W) * P(X >= K | Binom(n_i, W/L_i))
+# K* = smallest K where E[CIS_K] < 1
+compute_min_cis_order <- function(IS_df, connect_distance,
+                                  chr_sizes = chr_sizes_hg38,
+                                  significance = 1.0) {
+  window_size <- 2 * connect_distance
+  is_per_chr <- IS_df %>% count(Chr, name = "n_chr")
+
+  for (K in 2:20) {
+    expected_total <- 0
+    for (i in seq_len(nrow(is_per_chr))) {
+      chr <- is_per_chr$Chr[i]
+      n_i <- is_per_chr$n_chr[i]
+      L_i <- chr_sizes[chr]
+      if (is.na(L_i) || n_i < K) next
+      if (L_i <= window_size) next
+      n_windows <- L_i / window_size
+      p_k <- pbinom(K - 1, size = n_i, prob = window_size / L_i,
+                     lower.tail = FALSE)
+      expected_total <- expected_total + n_windows * p_k
+    }
+    if (expected_total < significance) {
+      return(list(K_min = K, expected_clusters = expected_total))
+    }
+  }
+  return(list(K_min = NA, expected_clusters = NA))
+}
+
+# Position-based sliding window CIS detection with per-chromosome Poisson test
+compute_cis_sliding_window <- function(IS_df, connect_distance,
+                                       chr_sizes = chr_sizes_hg38) {
+  window_size <- 2 * connect_distance
+
+  # Step 1: Data-driven minimum CIS order
+
+  min_order <- compute_min_cis_order(IS_df, connect_distance, chr_sizes)
+  K_min <- min_order$K_min
+  cat(sprintf("Data-driven minimum CIS order: K* = %d\n", K_min))
+  cat(sprintf("  (Expected K*-order clusters by chance: %.4f)\n",
+              min_order$expected_clusters))
+
+  # Report expected counts for orders below threshold
+  is_per_chr_tmp <- IS_df %>% count(Chr, name = "n_chr")
+  for (k in 2:max(2, K_min)) {
+    expected_k <- 0
+    for (i in seq_len(nrow(is_per_chr_tmp))) {
+      chr <- is_per_chr_tmp$Chr[i]
+      n_i <- is_per_chr_tmp$n_chr[i]
+      L_i <- chr_sizes[chr]
+      if (is.na(L_i) || n_i < k || L_i <= window_size) next
+      n_windows <- L_i / window_size
+      p_k <- pbinom(k - 1, size = n_i, prob = window_size / L_i,
+                     lower.tail = FALSE)
+      expected_k <- expected_k + n_windows * p_k
+    }
+    cat(sprintf("  Order %d: %.2f clusters expected by chance\n", k, expected_k))
+  }
+
+  # Step 2: Count ISs per chromosome
+  is_per_chr <- IS_df %>% count(Chr, name = "n_chr")
+  IS_df <- IS_df %>%
+    left_join(is_per_chr, by = "Chr") %>%
+    mutate(chr_length = chr_sizes[Chr]) %>%
+    arrange(Chr, Locus)
+
+  # Step 3: Count neighbors within ±connect_distance per IS
+  cis_per_is <- IS_df %>%
+    group_by(Chr) %>%
+    mutate(
+      n_neighbors = sapply(Locus, function(pos) {
+        sum(abs(Locus - pos) <= connect_distance) - 1L
+      }),
+      lambda_chr = (n_chr - 1) * (window_size / chr_length)
+    ) %>%
+    ungroup()
+
+  # Step 4: Keep only ISs meeting minimum order
+  cis_hits <- cis_per_is %>% filter(n_neighbors >= K_min)
+
+  if (nrow(cis_hits) == 0) {
+    cat("No CIS regions meet the minimum order threshold.\n")
+    return(tibble(
+      cis_id = integer(), Chr = character(), start = numeric(), end = numeric(),
+      n_is = integer(), n_unique_loci = integer(), n_samples = integer(),
+      n_donors = integer(), span_bp = numeric(), genes = character(),
+      chr_length = numeric(), n_is_on_chr = integer(),
+      effective_window = numeric(), lambda_region = numeric(),
+      p_value = numeric(), p_adj = numeric(), rank = integer(),
+      K_min = integer()
+    ))
+  }
+
+  # Step 5: Merge overlapping windows into CIS regions
+  cis_gr <- GRanges(
+    seqnames = paste0("chr", cis_hits$Chr),
+    ranges = IRanges(
+      start = pmax(1L, as.integer(cis_hits$Locus - connect_distance)),
+      end   = as.integer(cis_hits$Locus + connect_distance)
+    )
+  )
+  merged <- reduce(cis_gr)
+
+  # Assign each IS to a merged CIS region
+  all_gr <- GRanges(
+    seqnames = paste0("chr", IS_df$Chr),
+    ranges = IRanges(start = IS_df$Locus, end = IS_df$Locus)
+  )
+  olaps <- findOverlaps(all_gr, merged)
+  IS_df$cis_id <- NA_integer_
+  IS_df$cis_id[queryHits(olaps)] <- subjectHits(olaps)
+
+  # Step 6: Summarize CIS regions with per-chromosome Poisson test
+  cis_summary <- IS_df %>%
+    filter(!is.na(cis_id)) %>%
+    group_by(cis_id) %>%
+    summarise(
+      Chr = dplyr::first(Chr),
+      start = min(Locus),
+      end = max(Locus),
+      n_is = n(),
+      n_unique_loci = n_distinct(Locus),
+      n_samples = n_distinct(Sample),
+      n_donors = n_distinct(donor),
+      span_bp = max(Locus) - min(Locus),
+      genes = paste(sort(unique(nearest_gene_name)), collapse = "; "),
+      samples_list = paste(sort(unique(Sample)), collapse = "; "),
+      chr_length = dplyr::first(chr_length),
+      n_is_on_chr = dplyr::first(n_chr),
+      .groups = "drop"
+    ) %>%
+    filter(n_is >= K_min) %>%
+    mutate(
+      effective_window = pmin(span_bp + window_size, chr_length),
+      lambda_region = (n_is_on_chr - 1) * (effective_window / chr_length),
+      p_value = ppois(n_is - 1, lambda = lambda_region, lower.tail = FALSE),
+      p_adj = p.adjust(p_value, method = "BH"),
+      rank = rank(p_adj, ties.method = "min"),
+      K_min = K_min
+    ) %>%
+    arrange(rank)
+
+  return(cis_summary)
+}
+```
+
+## lisat CIS Detection
+
+The `lisat` package provides an independent CIS calling method for comparison.
+
+### AAV-Only Group
+
+```{r cis-lisat-aav, fig.width=10, fig.height=7}
+IS_aav_cis_input <- IS_aav_only %>%
+  select(Sample, SCount, Chr, Locus, nearest_gene_name)
+
+CIS_top_aav <- tryCatch(
+  CIS(IS_raw = IS_aav_cis_input, connect_distance = params$connect_distance),
+  error = function(e) { message("lisat CIS (AAV-only): ", e$message); NULL }
+)
+
+if (!is.null(CIS_top_aav)) {
+  CIS_overlap_aav <- CIS_overlap(CIS_data = CIS_top_aav, IS_raw = IS_aav_cis_input)
+  CIS_overlap_aav
+}
+```
+
+### EMS-Treated Group
+
+```{r cis-lisat-ems, fig.width=10, fig.height=7}
+IS_ems_cis_input <- IS_ems %>%
+  select(Sample, SCount, Chr, Locus, nearest_gene_name)
+
+CIS_top_ems <- tryCatch(
+  CIS(IS_raw = IS_ems_cis_input, connect_distance = params$connect_distance),
+  error = function(e) { message("lisat CIS (EMS): ", e$message); NULL }
+)
+
+if (!is.null(CIS_top_ems)) {
+  CIS_overlap_ems <- CIS_overlap(CIS_data = CIS_top_ems, IS_raw = IS_ems_cis_input)
+  CIS_overlap_ems
+}
+```
+
+## Statistical CIS Ranking (Sliding Window + Poisson Test)
+
+### AAV-Only Group
+
+```{r cis-sig-aav}
+cis_sig_aav <- compute_cis_sliding_window(IS_aav_only,
+                                           connect_distance = params$connect_distance)
+
+cis_sig_aav %>%
+  head(30) %>%
+  select(CIS = cis_id, Chr, Start = start, End = end,
+         `ISs in region` = n_is, `Unique loci` = n_unique_loci,
+         Samples = n_samples, Donors = n_donors,
+         `Span (bp)` = span_bp, Genes = genes,
+         `p-value` = p_value, `FDR` = p_adj, Rank = rank) %>%
+  kbl(digits = 6,
+      caption = paste0("AAV-only: CIS regions (min order K*=",
+                       cis_sig_aav$K_min[1],
+                       ", per-chr Poisson test, FDR-corrected)")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  scroll_box(height = "400px")
+```
+
+### EMS-Treated Group
+
+```{r cis-sig-ems}
+cis_sig_ems <- compute_cis_sliding_window(IS_ems,
+                                           connect_distance = params$connect_distance)
+
+cis_sig_ems %>%
+  head(30) %>%
+  select(CIS = cis_id, Chr, Start = start, End = end,
+         `ISs in region` = n_is, `Unique loci` = n_unique_loci,
+         Samples = n_samples, Donors = n_donors,
+         `Span (bp)` = span_bp, Genes = genes,
+         `p-value` = p_value, `FDR` = p_adj, Rank = rank) %>%
+  kbl(digits = 6,
+      caption = paste0("EMS-treated: CIS regions (min order K*=",
+                       cis_sig_ems$K_min[1],
+                       ", per-chr Poisson test, FDR-corrected)")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  scroll_box(height = "400px")
+```
+
+## CIS Comparison: AAV-only vs EMS-treated
+
+```{r cis-comparison}
+sig_threshold <- params$fdr_threshold
+
+cis_aav_sig <- cis_sig_aav %>% filter(p_adj < sig_threshold) %>%
+  mutate(group = "AAV_only")
+cis_ems_sig <- cis_sig_ems %>% filter(p_adj < sig_threshold) %>%
+  mutate(group = "EMS_treated")
+
+cat(sprintf("Significant CIS regions (FDR < %.2f):\n", sig_threshold))
+cat(sprintf("  AAV-only:    %d regions\n", nrow(cis_aav_sig)))
+cat(sprintf("  EMS-treated: %d regions\n", nrow(cis_ems_sig)))
+
+# Check for overlapping CIS regions between groups
+if (nrow(cis_aav_sig) > 0 & nrow(cis_ems_sig) > 0) {
+  gr_aav <- GRanges(seqnames = cis_aav_sig$Chr,
+                    ranges = IRanges(start = cis_aav_sig$start, end = cis_aav_sig$end))
+  gr_ems <- GRanges(seqnames = cis_ems_sig$Chr,
+                    ranges = IRanges(start = cis_ems_sig$start, end = cis_ems_sig$end))
+  shared_olaps <- findOverlaps(gr_aav, gr_ems, maxgap = params$connect_distance)
+  cat(sprintf("  Shared (overlapping within %d bp): %d region pairs\n",
+              params$connect_distance, length(shared_olaps)))
+}
+
+# Combined table
+cis_all_sig <- bind_rows(cis_aav_sig, cis_ems_sig) %>%
+  select(Group = group, Chr, Start = start, End = end,
+         `ISs` = n_is, Samples = n_samples, Donors = n_donors,
+         Genes = genes, FDR = p_adj) %>%
+  arrange(FDR)
+
+cis_all_sig %>%
+  kbl(digits = 6,
+      caption = sprintf("All significant CIS regions (FDR < %.2f)", sig_threshold)) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  scroll_box(height = "400px")
+```
+
+## Significant CIS with Confidence Flags
+
+```{r cis-valid-summary}
+valid_cis_aav <- cis_sig_aav %>%
+  filter(p_adj < sig_threshold) %>%
+  mutate(group = "AAV_only",
+         multi_sample = n_samples >= 2,
+         multi_donor = n_donors >= 2)
+valid_cis_ems <- cis_sig_ems %>%
+  filter(p_adj < sig_threshold) %>%
+  mutate(group = "EMS_treated",
+         multi_sample = n_samples >= 2,
+         multi_donor = n_donors >= 2)
+
+valid_cis_all <- bind_rows(valid_cis_aav, valid_cis_ems)
+
+if (nrow(valid_cis_all) > 0) {
+  valid_cis_all %>%
+    select(Chr, Start = start, End = end, Group = group,
+           `ISs` = n_is, `Unique loci` = n_unique_loci,
+           Samples = n_samples, Donors = n_donors,
+           `Multi-sample` = multi_sample, `Multi-donor` = multi_donor,
+           `Span (bp)` = span_bp, Genes = genes,
+           FDR = p_adj, Rank = rank) %>%
+    arrange(FDR) %>%
+    kbl(digits = 6,
+        caption = "Significant CIS regions with confidence flags") %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+} else {
+  cat("No CIS regions reach significance.\n")
+}
+```
+
+## Integration Sites within Significant CIS Regions
+
+Extract individual integration sites falling within significant CIS regions.
+
+```{r cis-sites-extraction}
+cis_ems_significant <- cis_sig_ems %>% filter(p_adj < sig_threshold)
+
+# Prepare is_data with Chr/Locus columns for region queries
+is_data_for_cis <- is_data %>%
+  mutate(
+    bp_chr_raw = coalesce(chr_bp_upstream, chr_bp_downstream),
+    bp_pos_raw = coalesce(pos_bp_upstream, pos_bp_downstream),
+    Chr = sub("^chr", "", bp_chr_raw),
+    Locus = as.integer(bp_pos_raw)
+  ) %>%
+  filter(!is.na(Chr), !is.na(Locus),
+         Chr %in% c(as.character(1:22), "X", "Y", "M"))
+
+# Display ISs within each significant CIS region
+if (nrow(cis_ems_significant) > 0) {
+  for (i in seq_len(nrow(cis_ems_significant))) {
+    cis_row <- cis_ems_significant[i, ]
+    cis_start <- cis_row$start - params$connect_distance
+    cis_end   <- cis_row$end + params$connect_distance
+
+    is_in_cis <- is_data_for_cis %>%
+      filter(Chr == cis_row$Chr,
+             Locus >= cis_start,
+             Locus <= cis_end)
+
+    cat(sprintf("\n### CIS chr%s (%.3f–%.3f Mb): %d ISs from %d samples\n",
+                cis_row$Chr, cis_row$start / 1e6, cis_row$end / 1e6,
+                nrow(is_in_cis), n_distinct(is_in_cis$sample)))
+    cat(sprintf("  AAV-only: %d | EMS-treated: %d\n",
+                sum(is_in_cis$treatment == "AAV_only"),
+                sum(is_in_cis$treatment != "AAV_only")))
+
+    if (nrow(is_in_cis) > 0) {
+      print(
+        is_in_cis %>%
+          arrange(Locus) %>%
+          select(Sample = sample, Donor = donor, Chr, Position = Locus,
+                 Reads = count, `Nearest Gene` = nearestFeature,
+                 `Gene Dist` = nearestFeatureDist, `In Gene` = inFeature,
+                 `Nearest Oncogene` = nearestOncoFeature,
+                 `Oncogene Dist` = nearestOncoFeatureDist,
+                 Orientation = orientation, Translocation = is_translocation,
+                 Confidence = confidence, `BP Evidence` = bp_evidence) %>%
+          kbl(caption = sprintf("ISs within CIS chr%s (%.3f–%.3f Mb ± %d kbp)",
+                                cis_row$Chr, cis_row$start / 1e6,
+                                cis_row$end / 1e6,
+                                params$connect_distance / 1000)) %>%
+          kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                        font_size = 11) %>%
+          scroll_box(height = "400px", width = "100%")
+      )
+    }
+  }
+}
+```
+
+# Session Info
+
+```{r}
+sessionInfo()
+```

@@ -53,9 +53,8 @@ The workflow follows these main steps:
    - Converts alignments to genomic intervals
    - Identifies potential insertion sites based on read coverage
 
-5. **Structural Variant Detection** (`identify_SVs`)
-   - Creates a custom reference combining AAV and genome
-   - Uses Sniffles to identify structural variants at AAV-genome junctions
+5. **Integration Site Break Point Detection** (`resolve_integration_sites`)
+   - Uses custom script to identify AAV and host genome break points
 
 
 ## Key Features
@@ -124,14 +123,4 @@ snakemake all --printshellcmds --jobs 4 --snakefile ../workflow/Snakefile.smk --
 Change the `--jobs` parameter to reflect the number of CPU cores to run on.
 Also change the `--snakefile` and `--configfile` parameters to reflect the paths to the main snakemake file and the sample set config file, respectively.
 The pipeline will then generate a folder, specified by the `out_folder` key in the config file, and populate with processed data.
-
-## Pipeline steps
-
-The pipeline processes each sample through the following steps:
-
-1. **Adapter trimming** (`cutadapt`) — Remove outer adapters from reads
-2. **Alignment** (`minimap2`) — Align reads to the combined host + AAV reference genome
-3. **Filtering** (`filter_sam.py`) — Filter alignments based on quality and mapping criteria
-4. **Shared read detection** (`filter_shared_reads.py`) — Identify reads with alignments to both the host genome and the AAV vector
-5. **Integration site resolution** (`resolve_integration_sites.py`) — Cluster shared reads by genomic position, resolve breakpoint coordinates, and determine AAV–genome junction structure
 

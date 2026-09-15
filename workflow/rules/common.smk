@@ -77,13 +77,6 @@ def parse_flags():
     # If flags definition is missing, add an empty one:
     if not "cutadapt_flags" in config:
         config["cutadapt_flags"] = dict()
-    if not "sniffles_flags" in config:
-        config["sniffles_flags"] = dict()
-    
-    # The flag string for sniffles cannot contain double quote:
-    sniffles_flags_str = ' '.join(config["sniffles_flags"].values())
-    if '"' in sniffles_flags_str:
-        raise Exception(f"Double quotes not allowed in sniffles flags: {sniffles_flags_str}")
 
 def parse_minimap_settings():
     required_keys = ["shortest_segment", "flags_filter_aln", "flags_custom_genome_aln"]

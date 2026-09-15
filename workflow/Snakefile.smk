@@ -40,7 +40,7 @@ pipeline_dir = snakefile_path.parent.parent
 
 configfile: pipeline_dir / "config/default_config.yaml"
 workdir: config['working_dir']
-include: pipeline_dir / "workflow/rules/common.smk"
+include: str(pipeline_dir / "workflow/rules/common.smk")
 config['pipeline_dir'] = pipeline_dir
 config['scripts_dir'] = pipeline_dir / "workflow/scripts"
 
@@ -217,7 +217,7 @@ rule split_alignments:
         scripts_dir=str(config["scripts_dir"]),
     threads: 1
     log:
-        str(config["out_folder"] / "03_aligned/{sample}.split_alignments.log"),
+        split=str(config["out_folder"] / "03_aligned/{sample}.split_alignments.log"),
     shell:
         """
         # Index the BAM file first to allow extraction of alignments:
@@ -230,10 +230,31 @@ rule split_alignments:
         # Extract the alignments to the genome (excluding AAV):
         # samtools view -h {input} | awk '$3 != "{params.aav_chr_names}"' | samtools sort > {output.genome_aln} &&
         samtools view -h {input} | python {params.scripts_dir}/filter_sam.py --ref_excl {params.aav_chr_names} | samtools sort > {output.genome_aln} &&
-        samtools index {output.genome_aln}) 2> >(tee {log} >&2)
+        samtools index {output.genome_aln}) 2> >(tee {log.split} >&2)
+
         """
 
-
+# filter out reads that have both, AAV and host alignment
+rule filter_shared_reads:
+    input:
+        aav_bam=str(config["out_folder"] / "03_aligned/AAV/{sample}_AAV_aln.bam"),
+        genome_bam=str(config["out_folder"] / "03_aligned/genome/{sample}_genome_aln.bam"),
+        full_bam=str(config["out_folder"] / "03_aligned/both/{sample}.bam"),
+    output:
+        shared_bam=str(config["out_folder"] / "03_aligned/shared/{sample}_shared.bam"),
+    params:
+        scripts_dir=str(config["scripts_dir"]),
+        aav_ids=str(config["out_folder"] / "03_aligned/shared/{sample}_aav_ids.txt"),
+        genome_ids=str(config["out_folder"] / "03_aligned/shared/{sample}_genome_ids.txt"),
+    log:
+        shared=str(config["out_folder"] / "03_aligned/shared/{sample}.filter_shared_reads.log"),
+    shell:
+        """
+        samtools view -F 4 {input.aav_bam} | awk '{{print $1}}' > {params.aav_ids} &&
+        samtools view -F 4 {input.genome_bam} | awk '{{print $1}}' > {params.genome_ids} &&
+        python {params.scripts_dir}/filter_shared_reads.py {params.aav_ids} {params.genome_ids} {input.full_bam} {output.shared_bam}
+        """ + r""" 2> >(tee {log.shared} >&2)
+        """
 
 
 #######################
@@ -243,7 +264,7 @@ rule split_alignments:
 # Identify reads that appear to cover an AAV insertion:
 rule identify_insertions:
     input:
-        genome_aln=str(config["out_folder"] / "03_aligned/genome/{sample}_genome_aln.bam"),
+        genome_aln=str(config["out_folder"] / "03_aligned/shared/{sample}_shared.bam"),
     output:
         str(config["out_folder"] / "04_insertions/{sample}_identified_insertions.txt"),
     params:
@@ -279,40 +300,50 @@ rule identify_insertions:
 
 
 
+##################################################
+# Resolve precise integration-site breakpoints  #
+##################################################
+
+rule resolve_integration_sites:
+    """
+    For each insertion cluster from step 4, use the read IDs to find the
+    corresponding split alignments in the full (genome + AAV) BAM and infer:
+      - chromosomal breakpoints 1 & 2 (start and end of the integration)
+      - AAV breakpoints 1 & 2 (which part of the AAV was inserted)
+      - supporting read count (UMI-deduped when RX tag is present)
+      - AAV insertion length (bp)
+    """
+    input:
+        insertions=str(config["out_folder"] / "04_insertions/{sample}_identified_insertions.txt"),
+        bam=str(config["out_folder"] / "03_aligned/both/{sample}.bam"),
+    output:
+        str(config["out_folder"] / "04_insertions/{sample}_integration_sites.tsv"),
+    params:
+        aav_chr_names=get_plasmid_chr_name,
+        scripts_dir=str(config["scripts_dir"]),
+        min_reads=config.get("resolve_min_reads", 1),
+    threads: 1
+    log:
+        str(config["out_folder"] / "04_insertions/{sample}.resolve_integration_sites.log"),
+    shell:
+        "python {params.scripts_dir}/resolve_integration_sites.py "
+        "--insertions {input.insertions} "
+        "--bam {input.bam} "
+        "--aav-chr {params.aav_chr_names} "
+        "--min-reads {params.min_reads} "
+        "--output {output} 2>&1 | tee {log}"
+
+
+
+
 ################################################
 # Identify breakpoints and structrual variants #
 ################################################
 
-rule identify_SVs:
-    input:
-        insertions=str(config["out_folder"] / "04_insertions/{sample}_identified_insertions.txt"),
-        filt_fastq=str(config["out_folder"] / "02_filtered/{sample}.filtered.fastq.gz"),
-        genome_index=custom_index_name,
-    output:
-        str(config["out_folder"] / "05_SVs/{sample}/SV_inference_done"),
-    params:
-        outdir=str(config["out_folder"] / "05_SVs/{sample}"),
-        minimap_flags=config["minimap_settings"]["flags_custom_genome_aln"],
-        sniffles_flags=' '.join(config["sniffles_flags"].values()),
-        scripts_dir=str(config["scripts_dir"]),
-        aav_chr_names=get_plasmid_chr_name,
-    threads:
-        config["threads"]["sniffles"]
-    log:
-        str(config["out_folder"] / "05_SVs/{sample}/identify_SVs.log"),
-    shell:
-        "bash {params.scripts_dir}/SV_inference.sh {input.insertions} {input.filt_fastq} "
-        "{input.genome_index} \"{params.aav_chr_names}\" {params.outdir} {params.scripts_dir} {threads} "
-        "\"{params.minimap_flags}\" \"{params.sniffles_flags}\" {output} 2>&1 | tee {log}"
-
-
-# Remove custom index after use to save space:
-all_SV_done = list()
-for sample, *_ in get_ss_samples():
-    all_SV_done.append(str(config["out_folder"] / f"05_SVs/{sample}/SV_inference_done"))
 rule cleanup_temp_folder:
     input:
-        all_SV_done
+        expand(str(config["out_folder"] / "04_insertions/{sample}_integration_sites.tsv"),
+               sample=[s for s, *_ in get_ss_samples()])
     output:
         temp(str(config["out_folder"] / "custom_index/.cleanup_marker"))
     params:
@@ -337,9 +368,12 @@ for sample, *_ in get_ss_samples():
     # all_rule_input.append(str(config["out_folder"] / f"01_cleaned/{sample}.cleaned.fastq.gz"))
     # all_rule_input.append(str(config["out_folder"] / f"02_filtered/{sample}.filtered.fastq.gz"))
     # all_rule_input.append(str(config["out_folder"] / f"02_filtered/{sample}.discarded.fastq.gz"))
-    # all_rule_input.append(str(config["out_folder"] / f"03_aligned/both/{sample}.bam"))
+    # all_rule_input.append(str(config["out_folder"] / "03_aligned/both/{sample}.bam"))
+    # all_rule_input.append(str(config["out_folder"] / "03_aligned/AAV/{sample}_AAV_aln.bam")),
+    # all_rule_input.append(str(config["out_folder"] / "03_aligned/genome/{sample}_genome_aln.bam")),
+    # all_rule_input.append(str(config["out_folder"] / f"03_aligned/shared/{sample}_shared.bam"))
     all_rule_input.append(str(config["out_folder"] / f"04_insertions/{sample}_identified_insertions.txt"))
-    all_rule_input.append(str(config["out_folder"] / f"05_SVs/{sample}/SV_inference_done"))
+    all_rule_input.append(str(config["out_folder"] / f"04_insertions/{sample}_integration_sites.tsv"))
     all_rule_input.append(str(config["out_folder"] / "custom_index/.cleanup_marker"))
 
 
